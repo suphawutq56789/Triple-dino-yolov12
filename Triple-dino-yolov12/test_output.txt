@@ -1,0 +1,96 @@
+FlashAttention is not available on this device. Using scaled_dot_product_attention instead.
+C:\Users\USER\AppData\Roaming\Python\Python310\site-packages\huggingface_hub\file_download.py:945: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+  warnings.warn(
+YOLOv12 Triple Input with DINOv3 Training
+============================================================
+Data Config: C:/Users/USER/Desktop/Triple-dino-yolov12/DATASET/data.yaml
+YOLOv12 Variant: s
+DINOv3 Size: small
+DINOv3 Integration: initial
+Freeze DINOv3: True
+Triple Branches: False
+Pretrained: None
+Epochs: 1
+Batch Size: 2
+Image Size: 224
+Device: cpu
+Save Period: Best/Last only
+------------------------------------------------------------
+
+🔧 Step 1: Setting up requirements for integration strategy: initial...
+✓ DINOv3 packages available
+
+📥 Step 2: Preparing DINOv3 small model...
+🔐 Setting up HuggingFace authentication...
+✓ HuggingFace authentication successful (source: saved token file)
+DINOv3 models will be cached in: C:\Users\USER\.cache\yolov12_dinov3
+✓ HuggingFace authentication successful
+
+📥 Downloading DINOv3 Small (21M parameters) from HuggingFace...
+Model: facebook/dinov3-vits16-pretrain-lvd1689m
+Fetching 6 files:   0%|          | 0/6 [00:00<?, ?it/s]Fetching 6 files: 100%|##########| 6/6 [00:00<?, ?it/s]
+✅ Successfully downloaded to: C:\Users\USER\.cache\yolov12_dinov3\huggingface\models--facebook--dinov3-vits16-pretrain-lvd1689m\snapshots\114c1379950215c8b35dfcd4e90a5c251dde0d32
+🧪 Testing model loading...
+✅ Model loaded successfully!
+   Config: DINOv3ViTConfig {
+  "architectures": [
+    "DINOv3ViTModel"
+  ],
+  "attention_dropout": 0.0,
+  "drop_path_rate": 0.0,
+  "dtype": "float32",
+  "hidden_act": "gelu",
+  "hidden_size": 384,
+  "image_size": 224,
+  "initializer_range": 0.02,
+  "intermediate_size": 1536,
+  "key_bias": false,
+  "layer_norm_eps": 1e-05,
+  "layerscale_value": 1.0,
+  "mlp_bias": true,
+  "model_type": "dinov3_vit",
+  "num_attention_heads": 6,
+  "num_channels": 3,
+  "num_hidden_layers": 12,
+  "num_register_tokens": 4,
+  "patch_size": 16,
+  "pos_embed_jitter": null,
+  "pos_embed_rescale": 2.0,
+  "pos_embed_shift": null,
+  "proj_bias": true,
+  "query_bias": true,
+  "rope_theta": 100.0,
+  "transformers_version": "4.56.0",
+  "use_gated_mlp": false,
+  "value_bias": true
+}
+
+   Hidden size: 384
+✓ DINOv3 small model ready
+
+🏗️ Step 3: Creating model configuration for integration: initial...
+Using DINOv3 P0-only preprocessing integration (input preprocessing before backbone)
+
+🚀 Step 4: Initializing model...
+Training from scratch with DINOv3 features
+DEBUG: Set model scale to 's' in config
+Using DINOv3 model: facebook/dinov3-vits16-pretrain-lvd1689m
+DINOv3 frozen: True
+DEBUG: Saved config with scale='s' to temp_yolov12_triple_dinov3_s_small.yaml
+❌ Model initialization failed: expected str, bytes or os.PathLike object, not dict
+Error type: TypeError
+Full traceback:
+Traceback (most recent call last):
+  File "C:\Users\USER\Desktop\Triple-dino-yolov12\Triple-dino-yolov12\train_triple_dinov3.py", line 297, in train_triple_dinov3
+    model = YOLO(model_yaml, task='detect')
+  File "C:\Users\USER\Desktop\Triple-dino-yolov12\Triple-dino-yolov12\ultralytics\models\yolo\model.py", line 16, in __init__
+    path = Path(model)
+  File "C:\Program Files\Python310\lib\pathlib.py", line 960, in __new__
+    self = cls._from_parts(args)
+  File "C:\Program Files\Python310\lib\pathlib.py", line 594, in _from_parts
+    drv, root, parts = self._parse_args(args)
+  File "C:\Program Files\Python310\lib\pathlib.py", line 578, in _parse_args
+    a = os.fspath(a)
+TypeError: expected str, bytes or os.PathLike object, not dict
+
+This might be due to DINOv3 integration complexity
