@@ -469,10 +469,10 @@ def train_triple_dinov3(
             seen.add(id(o))
             if isinstance(o, torch.nn.Module):
                 for p in o.parameters():
-                    if hasattr(p, '_backward_hooks'):
+                    if hasattr(p, '_backward_hooks') and p._backward_hooks is not None:
                         p._backward_hooks.clear()
                 for b in o.buffers():
-                    if hasattr(b, '_backward_hooks'):
+                    if hasattr(b, '_backward_hooks') and b._backward_hooks is not None:
                         b._backward_hooks.clear()
             elif isinstance(o, dict):
                 for v in o.values():
