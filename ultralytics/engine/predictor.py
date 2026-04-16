@@ -236,7 +236,15 @@ class BasePredictor:
 
             # Warmup model
             if not self.done_warmup:
-                self.model.warmup(imgsz=(1 if self.model.pt or self.model.triton else self.dataset.bs, 3, *self.imgsz))
+                # Detect input channels from first layer (TripleInputConv uses 9, standard uses 3)
+                in_channels = 3
+                try:
+                    first_layer = self.model.model.model[0]
+                    if hasattr(first_layer, "c1"):
+                        in_channels = first_layer.c1
+                except Exception:
+                    pass
+                self.model.warmup(imgsz=(1 if self.model.pt or self.model.triton else self.dataset.bs, in_channels, *self.imgsz))
                 self.done_warmup = True
 
             self.seen, self.windows, self.batch = 0, [], None

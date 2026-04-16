@@ -156,7 +156,15 @@ class BaseValidator:
             self.dataloader = self.dataloader or self.get_dataloader(self.data.get(self.args.split), self.args.batch)
 
             model.eval()
-            model.warmup(imgsz=(1 if pt else self.args.batch, 3, imgsz, imgsz))  # warmup
+            # Detect input channels from first layer (TripleInputConv uses 9, standard uses 3)
+            in_channels = 3
+            try:
+                first_layer = model.model.model[0]
+                if hasattr(first_layer, "c1"):
+                    in_channels = first_layer.c1
+            except Exception:
+                pass
+            model.warmup(imgsz=(1 if pt else self.args.batch, in_channels, imgsz, imgsz))  # warmup
 
         self.run_callbacks("on_val_start")
         dt = (
