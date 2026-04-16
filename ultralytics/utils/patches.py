@@ -86,6 +86,32 @@ def torch_load(*args, **kwargs):
     return _torch_load(*args, **kwargs)
 
 
+def _strip_tensor_hooks(obj, visited=None):
+    """Recursively strip backward hooks from tensors/modules so they can be pickled."""
+    if visited is None:
+        visited = set()
+    obj_id = id(obj)
+    if obj_id in visited:
+        return
+    visited.add(obj_id)
+    if isinstance(obj, torch.nn.Module):
+        for p in obj.parameters():
+            if hasattr(p, "_backward_hooks") and p._backward_hooks:
+                p._backward_hooks.clear()
+        for b in obj.buffers():
+            if hasattr(b, "_backward_hooks") and b._backward_hooks:
+                b._backward_hooks.clear()
+    elif isinstance(obj, torch.Tensor):
+        if hasattr(obj, "_backward_hooks") and obj._backward_hooks:
+            obj._backward_hooks.clear()
+    elif isinstance(obj, dict):
+        for v in obj.values():
+            _strip_tensor_hooks(v, visited)
+    elif isinstance(obj, (list, tuple)):
+        for v in obj:
+            _strip_tensor_hooks(v, visited)
+
+
 def torch_save(*args, **kwargs):
     """
     Optionally use dill to serialize lambda functions where pickle does not, adding robustness with 3 retries and
@@ -102,3 +128,11 @@ def torch_save(*args, **kwargs):
             if i == 3:
                 raise e
             time.sleep((2**i) / 2)  # exponential standoff: 0.5s, 1.0s, 2.0s
+        except (AttributeError, TypeError) as e:
+            # Can't pickle local functions (e.g. output-capturing hooks from the runtime).
+            # Strip backward hooks from all tensors/modules and retry once.
+            if "pickle" in str(e).lower() or "Can't pickle" in str(e):
+                if args:
+                    _strip_tensor_hooks(args[0])
+                return _torch_save(*args, **kwargs)
+            raise

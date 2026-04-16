@@ -457,6 +457,36 @@ def train_triple_dinov3(
     if imgsz > 384:
         print("⚠️ Large image size may cause OOM with DINOv3")
     
+    # Patch torch.save to strip unpicklable runtime hooks (e.g. from Claude Code output capturing)
+    _original_torch_save = torch.save
+
+    def _safe_torch_save(obj, *args, **kwargs):
+        def _strip_hooks(o, seen=None):
+            if seen is None:
+                seen = set()
+            if id(o) in seen:
+                return
+            seen.add(id(o))
+            if isinstance(o, torch.nn.Module):
+                for p in o.parameters():
+                    if hasattr(p, '_backward_hooks'):
+                        p._backward_hooks.clear()
+                for b in o.buffers():
+                    if hasattr(b, '_backward_hooks'):
+                        b._backward_hooks.clear()
+            elif isinstance(o, dict):
+                for v in o.values():
+                    _strip_hooks(v, seen)
+        try:
+            return _original_torch_save(obj, *args, **kwargs)
+        except (AttributeError, TypeError) as e:
+            if "pickle" in str(e).lower() or "Can't pickle" in str(e):
+                _strip_hooks(obj)
+                return _original_torch_save(obj, *args, **kwargs)
+            raise
+
+    torch.save = _safe_torch_save
+
     # Step 7: Start training
     print(f"\n🎯 Step 7: Starting training...")
     print("Note: First epoch may be slow due to DINOv3 model download/loading")
