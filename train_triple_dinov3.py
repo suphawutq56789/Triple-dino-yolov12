@@ -407,29 +407,27 @@ def train_triple_dinov3(
         # Mixed precision (helpful for memory with DINOv3) - disabled to avoid BatchNorm issues with small batch
         'amp': False,
         
-        # Disable problematic augmentations for small dataset and 9-channel input
-        'mixup': 0.0,  # Disable MixUp augmentation
-        'copy_paste': 0.0,  # Disable CopyPaste augmentation
-        'mosaic': 0.0,  # Disable Mosaic augmentation (can cause issues with small datasets)
-        'hsv_h': 0.0,  # Disable HSV hue augmentation (incompatible with 9-channel input)
-        'hsv_s': 0.0,  # Disable HSV saturation augmentation (incompatible with 9-channel input)  
-        'hsv_v': 0.0,  # Disable HSV value augmentation (incompatible with 9-channel input)
-        'auto_augment': None,  # Disable auto augmentation (ToGray incompatible with 9-channel input)
+        # Channel-based augmentations: disabled (incompatible with 9-channel triple input)
+        'hsv_h': 0.0,  # Incompatible with 9-channel input
+        'hsv_s': 0.0,  # Incompatible with 9-channel input
+        'hsv_v': 0.0,  # Incompatible with 9-channel input
+        'auto_augment': None,  # ToGray incompatible with 9-channel input
+        'bgr': 0.0,  # BGR shuffle incompatible with 9-channel input
+        'mixup': 0.0,  # Disable MixUp (channel blending issues)
+        'copy_paste': 0.0,  # Disable CopyPaste
         'erasing': 0.0,  # Disable random erasing
-        'plots': False,  # Disable plots (visualization incompatible with 9-channel input)
-        
-        # Additional augmentation disabling for 9-channel compatibility
-        'degrees': 0.0,  # Disable rotation
-        'translate': 0.0,  # Disable translation
-        'scale': 0.0,  # Disable scaling
-        'shear': 0.0,  # Disable shearing
-        'perspective': 0.0,  # Disable perspective
-        'flipud': 0.0,  # Disable vertical flip
-        'fliplr': 0.0,  # Disable horizontal flip
-        
-        # Additional safety measures for triple input
-        'close_mosaic': 0,  # Disable close mosaic augmentation
-        'bgr': 0.0,  # Disable BGR channel shuffling
+        'plots': False,  # Visualization incompatible with 9-channel input
+
+        # Geometric augmentations: ENABLED (spatial transforms work on any number of channels)
+        'mosaic': 1.0,   # Mosaic augmentation - crucial for small datasets
+        'close_mosaic': 10,  # Disable mosaic in last 10 epochs for stable convergence
+        'fliplr': 0.5,   # Horizontal flip
+        'flipud': 0.0,   # Vertical flip (off - not useful for most detection tasks)
+        'translate': 0.1, # Translation
+        'scale': 0.5,    # Scale jitter
+        'degrees': 0.0,  # Rotation (off - keep boxes upright)
+        'shear': 0.0,    # Shear (off)
+        'perspective': 0.0,  # Perspective (off)
         'workers': 0,  # Disable multiprocessing workers to avoid DataLoader issues
         
         # Additional arguments
