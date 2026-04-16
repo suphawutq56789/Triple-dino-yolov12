@@ -87,7 +87,7 @@ def torch_load(*args, **kwargs):
 
 
 def _strip_tensor_hooks(obj, visited=None):
-    """Recursively strip backward hooks from tensors/modules so they can be pickled."""
+    """Recursively strip all unpicklable hooks from tensors/modules so they can be pickled."""
     if visited is None:
         visited = set()
     obj_id = id(obj)
@@ -95,6 +95,15 @@ def _strip_tensor_hooks(obj, visited=None):
         return
     visited.add(obj_id)
     if isinstance(obj, torch.nn.Module):
+        # Clear all hook dicts on every submodule (forward + backward)
+        for m in obj.modules():
+            for attr in ('_forward_hooks', '_forward_pre_hooks', '_backward_hooks',
+                         '_forward_hooks_with_kwargs', '_forward_hooks_always_called',
+                         '_backward_pre_hooks'):
+                hooks = getattr(m, attr, None)
+                if hooks is not None:
+                    hooks.clear()
+        # Clear backward hooks on parameters and buffers
         for p in obj.parameters():
             if hasattr(p, "_backward_hooks") and p._backward_hooks:
                 p._backward_hooks.clear()

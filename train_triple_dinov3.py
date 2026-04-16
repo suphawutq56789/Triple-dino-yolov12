@@ -468,6 +468,15 @@ def train_triple_dinov3(
                 return
             seen.add(id(o))
             if isinstance(o, torch.nn.Module):
+                # Clear all hook dicts on every submodule (forward + backward)
+                for m in o.modules():
+                    for attr in ('_forward_hooks', '_forward_pre_hooks', '_backward_hooks',
+                                 '_forward_hooks_with_kwargs', '_forward_hooks_always_called',
+                                 '_backward_pre_hooks'):
+                        hooks = getattr(m, attr, None)
+                        if hooks is not None:
+                            hooks.clear()
+                # Clear backward hooks on parameters and buffers
                 for p in o.parameters():
                     if hasattr(p, '_backward_hooks') and p._backward_hooks is not None:
                         p._backward_hooks.clear()
