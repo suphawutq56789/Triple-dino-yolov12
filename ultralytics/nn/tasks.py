@@ -147,6 +147,10 @@ class BaseModel(nn.Module):
         Returns:
             (torch.Tensor): The last output of the model.
         """
+        # P0 DINOv3 preprocessing for initial integration
+        if hasattr(self, 'p0_preprocessor'):
+            x = self.p0_preprocessor(x)
+
         y, dt, embeddings = [], [], []  # outputs
         for m in self.model:
             if m.f != -1:  # if not from previous layer

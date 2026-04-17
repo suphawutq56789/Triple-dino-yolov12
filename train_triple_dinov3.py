@@ -385,16 +385,13 @@ def train_triple_dinov3(
             print(f"✓ P0 DINOv3 preprocessor configured: 9 → {p0_output_channels} channels")
             print(f"✓ First backbone Conv updated: {p0_output_channels} → {first_conv.conv.out_channels} channels")
 
-            # Register forward pre-hook so DINOv3 runs on 9-ch input before the backbone
-            _p0 = p0_preprocessor
-            _p0_ch = p0_output_channels
-            def _dino_pre_hook(module, input):
-                x = input[0]
-                if x.shape[1] != _p0_ch:  # raw 9-ch input — run DINOv3
-                    x = _p0(x)
-                return (x,)
-            first_conv.register_forward_pre_hook(_dino_pre_hook)
-            print(f"✓ DINOv3 forward pre-hook registered on layer 0")
+            # Register callback to attach p0_preprocessor after trainer rebuilds model
+            _p0_prep = p0_preprocessor
+            def _attach_dino_to_trainer(trainer):
+                if not hasattr(trainer.model, 'p0_preprocessor'):
+                    trainer.model.p0_preprocessor = _p0_prep
+            model.add_callback('on_pretrain_routine_start', _attach_dino_to_trainer)
+            print(f"✓ DINOv3 callback registered (attaches preprocessor after model rebuild)")
         
         print("✓ Model initialized successfully")
         
