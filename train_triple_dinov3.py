@@ -419,15 +419,15 @@ def train_triple_dinov3(
         'plots': False,  # Visualization incompatible with 9-channel input
 
         # Geometric augmentations: ENABLED (spatial transforms work on any number of channels)
-        'mosaic': 1.0,   # Mosaic augmentation - crucial for small datasets
-        'close_mosaic': 10,  # Disable mosaic in last 10 epochs for stable convergence
-        'fliplr': 0.5,   # Horizontal flip
-        'flipud': 0.0,   # Vertical flip (off - not useful for most detection tasks)
+        'mosaic': 1.0,    # Mosaic augmentation - crucial for small datasets
+        'close_mosaic': 30,  # Keep mosaic longer for better generalization (was 10)
+        'fliplr': 0.5,    # Horizontal flip
+        'flipud': 0.5,    # Vertical flip (enabled - helps generalization)
         'translate': 0.1, # Translation
-        'scale': 0.5,    # Scale jitter
-        'degrees': 0.0,  # Rotation (off - keep boxes upright)
-        'shear': 0.0,    # Shear (off)
-        'perspective': 0.0,  # Perspective (off)
+        'scale': 0.5,     # Scale jitter
+        'degrees': 10.0,  # Rotation ±10° (helps with object orientation variance)
+        'shear': 2.0,     # Shear ±2° (subtle perspective variation)
+        'perspective': 0.0,  # Perspective (off - too aggressive for detection)
         'workers': 0,  # Disable multiprocessing workers to avoid DataLoader issues
         
         # Additional arguments
