@@ -170,12 +170,22 @@ def train_triple_dinov3(
     try:
         if pretrained_path:
             print(f"Loading with pretrained weights: {pretrained_path}")
-            # For DINOv3 integration, we'll need custom weight loading
             from load_pretrained_triple import load_pretrained_weights_to_triple_model
+            import yaml as _yaml
+
+            # Create a scaled temp config so YOLO knows the correct variant channels
+            with open(model_config, 'r') as _f:
+                _config = _yaml.safe_load(_f)
+            _temp_cfg = f"temp_yolov12_triple_dinov3_{variant}_{dinov3_size}.yaml"
+            with open(_temp_cfg, 'w') as _f:
+                _yaml.dump(_config, _f, default_flow_style=False)
+
             model = load_pretrained_weights_to_triple_model(
                 pretrained_path=pretrained_path,
-                triple_model_config=model_config
+                triple_model_config=_temp_cfg
             )
+            model.model.yaml['scale'] = variant
+            Path(_temp_cfg).unlink(missing_ok=True)
         else:
             print("Training from scratch with DINOv3 features")
             # For nodino integration, use the YAML as-is
