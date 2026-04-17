@@ -148,7 +148,7 @@ def train_triple_dinov3(
         model_config = "ultralytics/cfg/models/v12/yolov12_triple.yaml"
         print("Using standard triple input model (no DINOv3)")
     elif integrate == "initial":
-        model_config = "ultralytics/cfg/models/v12/yolov12_triple_dinov3_p0_only.yaml"
+        model_config = "ultralytics/cfg/models/v12/yolov12.yaml"
         print("Using DINOv3 P0-only preprocessing integration (input preprocessing before backbone)")
     elif integrate == "p3":
         model_config = "ultralytics/cfg/models/v12/yolov12_triple_dinov3_p3.yaml"
@@ -168,6 +168,19 @@ def train_triple_dinov3(
     # Step 4: Initialize model
     print(f"\n🚀 Step 4: Initializing model...")
     try:
+        # Resolve dino_model_name early so it's available for both pretrained and scratch paths
+        _model_name_map = {
+            "small": "facebook/dinov3-vits16-pretrain-lvd1689m",
+            "small_plus": "facebook/dinov3-vits16plus-pretrain-lvd1689m",
+            "base": "facebook/dinov3-vitb16-pretrain-lvd1689m",
+            "large": "facebook/dinov3-vitl16-pretrain-lvd1689m",
+            "huge": "facebook/dinov3-vith16plus-pretrain-lvd1689m",
+            "giant": "facebook/dinov3-vit7b16-pretrain-lvd1689m",
+            "sat_large": "facebook/dinov3-vitl16-pretrain-lvd1689m",
+            "sat_giant": "facebook/dinov3-vit7b16-pretrain-sat493m",
+        }
+        dino_model_name = _model_name_map.get(dinov3_size, _model_name_map["small"])
+
         if pretrained_path:
             print(f"Loading with pretrained weights: {pretrained_path}")
             from load_pretrained_triple import load_pretrained_weights_to_triple_model
@@ -176,6 +189,9 @@ def train_triple_dinov3(
             # Create a scaled temp config so YOLO knows the correct variant channels
             with open(model_config, 'r') as _f:
                 _config = _yaml.safe_load(_f)
+            # For initial integration, DINOv3 outputs 64-ch so backbone input = 64
+            if integrate == "initial":
+                _config['ch'] = 64
             _temp_cfg = f"temp_yolov12_triple_dinov3_{variant}_{dinov3_size}.yaml"
             with open(_temp_cfg, 'w') as _f:
                 _yaml.dump(_config, _f, default_flow_style=False)
@@ -236,10 +252,9 @@ def train_triple_dinov3(
                     dino_model_name = model_name_map.get(dinov3_size, model_name_map["small"])
                     
                     if integrate == "initial":
-                        # P0-only integration: P0 preprocessing happens outside backbone
-                        # No backbone modifications needed - preprocessing will be handled separately
-                        # The backbone starts with regular Conv layer that receives P0 preprocessed input
-                        pass  # No backbone config changes needed
+                        # Use standard yolov12 backbone so pretrained weights transfer for layers 1+
+                        # DINOv3 preprocesses 9-ch → 64-ch, backbone receives 64-ch input
+                        config['ch'] = 64  # DINOv3 P0 output channels
                     elif integrate == "p3":
                         # Update the P3 feature enhancement configuration (using conv-based approach)
                         # P3FeatureEnhancer has simpler args: [input_channels, output_channels]
