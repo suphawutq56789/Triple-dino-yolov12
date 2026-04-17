@@ -384,6 +384,17 @@ def train_triple_dinov3(
                 
             print(f"✓ P0 DINOv3 preprocessor configured: 9 → {p0_output_channels} channels")
             print(f"✓ First backbone Conv updated: {p0_output_channels} → {first_conv.conv.out_channels} channels")
+
+            # Register forward pre-hook so DINOv3 runs on 9-ch input before the backbone
+            _p0 = p0_preprocessor
+            _p0_ch = p0_output_channels
+            def _dino_pre_hook(module, input):
+                x = input[0]
+                if x.shape[1] != _p0_ch:  # raw 9-ch input — run DINOv3
+                    x = _p0(x)
+                return (x,)
+            first_conv.register_forward_pre_hook(_dino_pre_hook)
+            print(f"✓ DINOv3 forward pre-hook registered on layer 0")
         
         print("✓ Model initialized successfully")
         
