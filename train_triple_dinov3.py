@@ -385,13 +385,16 @@ def train_triple_dinov3(
             print(f"✓ P0 DINOv3 preprocessor configured: 9 → {p0_output_channels} channels")
             print(f"✓ First backbone Conv updated: {p0_output_channels} → {first_conv.conv.out_channels} channels")
 
-            # Register callback to attach p0_preprocessor after trainer rebuilds model
+            # Attach p0_preprocessor to both model and EMA every epoch
+            # EMA is deepcopy'd before on_pretrain_routine_start fires, so must re-attach each epoch
             _p0_prep = p0_preprocessor
             def _attach_dino_to_trainer(trainer):
-                if not hasattr(trainer.model, 'p0_preprocessor'):
-                    trainer.model.p0_preprocessor = _p0_prep
+                trainer.model.p0_preprocessor = _p0_prep
+                if hasattr(trainer, 'ema') and trainer.ema is not None:
+                    trainer.ema.ema.p0_preprocessor = _p0_prep
             model.add_callback('on_pretrain_routine_start', _attach_dino_to_trainer)
-            print(f"✓ DINOv3 callback registered (attaches preprocessor after model rebuild)")
+            model.add_callback('on_train_epoch_start', _attach_dino_to_trainer)
+            print(f"✓ DINOv3 callbacks registered (model + EMA, every epoch)")
         
         print("✓ Model initialized successfully")
         
