@@ -416,8 +416,9 @@ class DINOv3Backbone(nn.Module):
         if H != self.image_size or W != self.image_size:
             # Align to multiple of 32 so YOLO's 16x downsampling always yields
             # even spatial dims — required for ABlock area-attention (area=4).
-            target_h = max(32, (H // 2 // 32) * 32)
-            target_w = max(32, (W // 2 // 32) * 32)
+            # Output at full input resolution so YOLO P3/P4/P5 land at 80/40/20.
+            target_h = max(32, (H // 32) * 32)
+            target_w = max(32, (W // 32) * 32)
             features = nn.functional.interpolate(
                 features,
                 size=(target_h, target_w),

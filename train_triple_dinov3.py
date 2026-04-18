@@ -301,9 +301,10 @@ def train_triple_dinov3(
                         print(f"Adapter-based Dual DINOv3: P0 (9→64→64*{scale_factor}) + P3 (auto→64→128*{scale_factor}), variant '{variant}' ({scale_factor}x scaling)")
                 
                 # Create temporary config file with variant
+                config['scale'] = variant  # ensure correct scale is picked from scales: dict
                 temp_config_path = f"temp_yolov12_triple_dinov3_{variant}_{dinov3_size}.yaml"
                 with open(temp_config_path, 'w') as f:
-                    yaml.dump(config, f, default_flow_style=False)
+                    yaml.dump(config, f, default_flow_style=False, sort_keys=False)
                 
                 # Create model with variant scaling - simple approach for all variants
                 model = YOLO(temp_config_path)
