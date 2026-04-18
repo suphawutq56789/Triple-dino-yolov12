@@ -37,9 +37,13 @@ def train_triple_with_pretrained(pretrained_path, data_config, model_config=None
         Training results
     """
     
-    # Default triple model config
+    # Default triple model config — use scale-specific YAML when available
     if model_config is None:
-        model_config = "ultralytics/cfg/models/v12/yolov12_triple.yaml"
+        scale_yaml = f"ultralytics/cfg/models/v12/yolov12{variant}_triple.yaml"
+        if Path(scale_yaml).exists():
+            model_config = scale_yaml
+        else:
+            model_config = "ultralytics/cfg/models/v12/yolov12_triple.yaml"
     
     print("YOLOv12 Triple Input Training with Pretrained Weights")
     print("=" * 60)
