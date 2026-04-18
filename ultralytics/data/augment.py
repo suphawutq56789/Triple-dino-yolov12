@@ -1381,11 +1381,11 @@ class RandomHSV:
             else:
                 # Multi-channel (e.g. 9-ch triple input): apply HSV to each 3-ch group
                 for start in range(0, c, 3):
-                    patch = img[:, :, start:start + 3]
+                    patch = img[:, :, start:start + 3].copy()
                     if patch.shape[2] == 3:
                         hue, sat, val = cv2.split(cv2.cvtColor(patch, cv2.COLOR_BGR2HSV))
                         im_hsv = cv2.merge((cv2.LUT(hue, lut_hue), cv2.LUT(sat, lut_sat), cv2.LUT(val, lut_val)))
-                        cv2.cvtColor(im_hsv, cv2.COLOR_HSV2BGR, dst=img[:, :, start:start + 3])
+                        img[:, :, start:start + 3] = cv2.cvtColor(im_hsv, cv2.COLOR_HSV2BGR)
         return labels
 
 
