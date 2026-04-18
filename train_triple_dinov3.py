@@ -430,7 +430,7 @@ def train_triple_dinov3(
         'device': device,
         
         # Learning rate configuration for DINOv3
-        'lr0': 0.001 if freeze_dinov3 else 0.0001,  # Lower LR if fine-tuning DINOv3
+        'lr0': 0.0005 if freeze_dinov3 else 0.0001,  # Lower LR if fine-tuning DINOv3
         'lrf': 0.01,
         'momentum': 0.9,
         'weight_decay': 0.0005,
