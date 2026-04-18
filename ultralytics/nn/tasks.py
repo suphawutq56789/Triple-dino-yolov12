@@ -951,6 +951,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
     max_channels = float("inf")
     nc, act, scales = (d.get(x) for x in ("nc", "activation", "scales"))
     depth, width, kpt_shape = (d.get(x, 1.0) for x in ("depth_multiple", "width_multiple", "kpt_shape"))
+    scale = None
     if scales:
         scale = d.get("scale")
         if not scale:
@@ -1041,11 +1042,11 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
                 n = 1
             if m is C3k2:  # for M/L/X sizes
                 legacy = False
-                if scale in "mlx":
+                if scale and scale in "mlx":
                     args[3] = True
-            if m is A2C2f: 
+            if m is A2C2f:
                 legacy = False
-                if scale in "lx":  # for L/X sizes
+                if scale and scale in "lx":  # for L/X sizes
                     args.append(True)
                     args.append(1.5)
         elif m is AIFI:
