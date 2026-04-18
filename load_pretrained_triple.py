@@ -18,21 +18,33 @@ from pathlib import Path
 from ultralytics import YOLO
 from ultralytics.nn.modules.conv import TripleInputConv
 
-def load_pretrained_weights_to_triple_model(pretrained_path, triple_model_config, save_path=None):
+def load_pretrained_weights_to_triple_model(pretrained_path, triple_model_config, save_path=None, variant='m'):
     """
     Load pretrained YOLOv12 weights into a triple input model.
-    
+
     Args:
         pretrained_path (str): Path to pretrained YOLOv12 model (.pt file)
         triple_model_config (str): Path to triple input model configuration
         save_path (str, optional): Path to save the initialized model
-        
+        variant (str): Model scale n/s/m/l/x (default 'm')
+
     Returns:
         YOLO: Triple input model with pretrained weights loaded
     """
+    import yaml, tempfile, os
     print(f"Loading pretrained weights from: {pretrained_path}")
     print(f"Triple model config: {triple_model_config}")
-    
+
+    # Write a temp YAML that forces the requested scale
+    with open(triple_model_config) as f:
+        cfg = yaml.safe_load(f)
+    cfg['scale'] = variant
+    tmp_yaml = f"temp_yolov12_triple_{variant}.yaml"
+    with open(tmp_yaml, 'w') as f:
+        yaml.dump(cfg, f, default_flow_style=False)
+    triple_model_config = tmp_yaml
+    print(f"Using scale='{variant}' via {tmp_yaml}")
+
     # Load pretrained model to get weights
     try:
         pretrained_checkpoint = torch.load(pretrained_path, map_location='cpu')

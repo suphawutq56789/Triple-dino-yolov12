@@ -16,9 +16,10 @@ from pathlib import Path
 from ultralytics import YOLO
 from load_pretrained_triple import load_pretrained_weights_to_triple_model
 
-def train_triple_with_pretrained(pretrained_path, data_config, model_config=None, 
-                                epochs=100, batch_size=16, imgsz=640, 
-                                patience=50, name="yolov12_triple_pretrained"):
+def train_triple_with_pretrained(pretrained_path, data_config, model_config=None,
+                                epochs=100, batch_size=16, imgsz=640,
+                                patience=50, name="yolov12_triple_pretrained",
+                                variant='m'):
     """
     Train triple input model with pretrained weights.
     
@@ -55,7 +56,8 @@ def train_triple_with_pretrained(pretrained_path, data_config, model_config=None
     model = load_pretrained_weights_to_triple_model(
         pretrained_path=pretrained_path,
         triple_model_config=model_config,
-        save_path=None  # Don't save intermediate model
+        save_path=None,
+        variant=variant,
     )
     
     # Step 2: Validate model with dummy input
@@ -93,7 +95,8 @@ def train_triple_with_pretrained(pretrained_path, data_config, model_config=None
         warmup_epochs=3,
         warmup_momentum=0.8,
         warmup_bias_lr=0.1,
-        optimizer='AdamW',  # AdamW often works better for fine-tuning
+        optimizer='AdamW',
+        amp=False,  # disable AMP check (incompatible with triple-input model)
     )
     
     print(f"\n✅ Training completed!")
@@ -183,6 +186,8 @@ def main():
                        help='Early stopping patience (default: 50)')
     parser.add_argument('--name', type=str, default='yolov12_triple_pretrained',
                        help='Experiment name (default: yolov12_triple_pretrained)')
+    parser.add_argument('--variant', type=str, default='m', choices=['n','s','m','l','x'],
+                       help='Model scale variant (default: m)')
     parser.add_argument('--compare', action='store_true',
                        help='Compare pretrained vs from-scratch training')
     
@@ -210,7 +215,8 @@ def main():
             batch_size=args.batch,
             imgsz=args.imgsz,
             patience=args.patience,
-            name=args.name
+            name=args.name,
+            variant=args.variant,
         )
 
 if __name__ == "__main__":
