@@ -47,11 +47,9 @@ def load_pretrained_weights_to_triple_model(pretrained_path, triple_model_config
     depth, width, max_ch = _scale_params[variant]
     with open(triple_model_config) as f:
         cfg = yaml.safe_load(f)
-    cfg.pop('scales', None)
-    cfg.pop('scale', None)
-    cfg['depth_multiple'] = depth
-    cfg['width_multiple'] = width
-    cfg['max_channels'] = max_ch
+    # Keep 'scales' dict (parse_model needs it to define 'scale' variable),
+    # but set 'scale' explicitly so it selects the correct variant.
+    cfg['scale'] = variant
     tmp_yaml = f"temp_yolov12_triple_{variant}.yaml"
     with open(tmp_yaml, 'w') as f:
         yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)
