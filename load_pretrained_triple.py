@@ -50,17 +50,13 @@ def load_pretrained_weights_to_triple_model(pretrained_path, triple_model_config
         # Already has explicit depth/width — use file as-is, no temp needed
         print(f"Using scale='{variant}' from {triple_model_config} (depth_multiple already set)")
     else:
-        # Fallback: write temp YAML with explicit depth/width/max_channels
-        cfg.pop('scales', None)
-        cfg.pop('scale', None)
-        cfg['depth_multiple'] = depth
-        cfg['width_multiple'] = width
-        cfg['max_channels'] = max_ch
+        # Set scale key so parse_model uses scales[variant] correctly (preserves C3k2/A2C2f flags)
+        cfg['scale'] = variant
         tmp_yaml = f"temp_yolov12_triple_{variant}.yaml"
         with open(tmp_yaml, 'w') as f:
             yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)
         triple_model_config = tmp_yaml
-        print(f"Using scale='{variant}' (depth={depth}, width={width}) via {tmp_yaml}")
+        print(f"Using scale='{variant}' via {tmp_yaml}")
 
     # Load pretrained model to get weights
     try:
