@@ -198,7 +198,8 @@ def train_triple_dinov3(
 
             model = load_pretrained_weights_to_triple_model(
                 pretrained_path=pretrained_path,
-                triple_model_config=_temp_cfg
+                triple_model_config=_temp_cfg,
+                integrate=integrate,
             )
             model.model.yaml['scale'] = variant
             Path(_temp_cfg).unlink(missing_ok=True)

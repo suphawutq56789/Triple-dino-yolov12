@@ -18,7 +18,7 @@ from pathlib import Path
 from ultralytics import YOLO
 from ultralytics.nn.modules.conv import TripleInputConv
 
-def load_pretrained_weights_to_triple_model(pretrained_path, triple_model_config, save_path=None, variant='m'):
+def load_pretrained_weights_to_triple_model(pretrained_path, triple_model_config, save_path=None, variant='m', integrate='initial'):
     """
     Load pretrained YOLOv12 weights into a triple input model.
 
@@ -83,32 +83,50 @@ def load_pretrained_weights_to_triple_model(pretrained_path, triple_model_config
     loaded_layers = []
     skipped_layers = []
     
+    import re
+
+    def _offset_name(name, offset):
+        """Remap model.N.xxx → model.(N-offset).xxx"""
+        m = re.match(r'model\.(\d+)\.(.*)', name)
+        if m:
+            n = int(m.group(1))
+            if n >= 6:
+                return f'model.{n - offset}.{m.group(2)}'
+        return None
+
     for name, param in triple_state_dict.items():
+        loaded = False
+        # Direct match
         if name in pretrained_state_dict:
             pretrained_param = pretrained_state_dict[name]
-            
-            # Check if shapes match
             if param.shape == pretrained_param.shape:
                 param.copy_(pretrained_param)
                 loaded_layers.append(name)
-            else:
-                skipped_layers.append(f"{name}: shape mismatch {param.shape} vs {pretrained_param.shape}")
-        else:
-            # Special handling for TripleInputConv (first layer)
+                loaded = True
+
+        if not loaded:
+            # TripleInputConv: copy pretrained layer 0 weights to conv1/conv2/conv3
             if 'model.0.' in name and any(x in name for x in ['conv1', 'conv2', 'conv3']):
-                # Find corresponding weight in pretrained model
                 base_name = name.replace('conv1.', '').replace('conv2.', '').replace('conv3.', '')
                 if base_name in pretrained_state_dict:
                     pretrained_param = pretrained_state_dict[base_name]
                     if param.shape == pretrained_param.shape:
                         param.copy_(pretrained_param)
                         loaded_layers.append(f"{name} <- {base_name}")
-                    else:
-                        skipped_layers.append(f"{name}: shape mismatch {param.shape} vs {pretrained_param.shape}")
-                else:
-                    skipped_layers.append(f"{name}: no matching pretrained weight")
-            else:
-                skipped_layers.append(f"{name}: not found in pretrained model")
+                        loaded = True
+
+            # p3 offset mapping: p3 layer N (N>=6) = pretrained layer N-1
+            if not loaded and integrate == 'p3':
+                offset_name = _offset_name(name, 1)
+                if offset_name and offset_name in pretrained_state_dict:
+                    pretrained_param = pretrained_state_dict[offset_name]
+                    if param.shape == pretrained_param.shape:
+                        param.copy_(pretrained_param)
+                        loaded_layers.append(f"{name} <- {offset_name}")
+                        loaded = True
+
+        if not loaded:
+            skipped_layers.append(f"{name}: not found in pretrained model")
     
     print(f"\n✓ Loaded {len(loaded_layers)} layers from pretrained model")
     print(f"⚠ Skipped {len(skipped_layers)} layers")
