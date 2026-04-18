@@ -31,19 +31,32 @@ def load_pretrained_weights_to_triple_model(pretrained_path, triple_model_config
     Returns:
         YOLO: Triple input model with pretrained weights loaded
     """
-    import yaml, tempfile, os
+    import yaml
     print(f"Loading pretrained weights from: {pretrained_path}")
     print(f"Triple model config: {triple_model_config}")
 
-    # Write a temp YAML that forces the requested scale
+    # Scale params: remove 'scales' dict and set depth/width explicitly so
+    # ultralytics parse_model uses the correct variant without ambiguity.
+    _scale_params = {
+        'n': (0.50, 0.25, 1024),
+        's': (0.50, 0.50, 1024),
+        'm': (0.50, 1.00,  512),
+        'l': (1.00, 1.00,  512),
+        'x': (1.00, 1.50,  512),
+    }
+    depth, width, max_ch = _scale_params[variant]
     with open(triple_model_config) as f:
         cfg = yaml.safe_load(f)
-    cfg['scale'] = variant
+    cfg.pop('scales', None)
+    cfg.pop('scale', None)
+    cfg['depth_multiple'] = depth
+    cfg['width_multiple'] = width
+    cfg['max_channels'] = max_ch
     tmp_yaml = f"temp_yolov12_triple_{variant}.yaml"
     with open(tmp_yaml, 'w') as f:
-        yaml.dump(cfg, f, default_flow_style=False)
+        yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)
     triple_model_config = tmp_yaml
-    print(f"Using scale='{variant}' via {tmp_yaml}")
+    print(f"Using scale='{variant}' (depth={depth}, width={width}) via {tmp_yaml}")
 
     # Load pretrained model to get weights
     try:
