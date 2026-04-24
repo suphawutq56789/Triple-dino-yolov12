@@ -45,6 +45,10 @@ def train_triple_dinov3(
     variant: str = "s",  # YOLOv12 model variant: n, s, m, l, x
     save_period: int = -1,  # Save weights every N epochs (-1 = only best/last)
     workers: int = 0,
+    lrf: float = 0.001,
+    weight_decay: float = 0.001,
+    close_mosaic: int = 50,
+    iou: float = 0.5,
     **kwargs
 ):
     """
@@ -434,9 +438,9 @@ def train_triple_dinov3(
         
         # Learning rate configuration for DINOv3
         'lr0': 0.0005 if freeze_dinov3 else 0.0001,  # Lower LR if fine-tuning DINOv3
-        'lrf': 0.01,
+        'lrf': lrf,
         'momentum': 0.9,
-        'weight_decay': 0.0005,
+        'weight_decay': weight_decay,
         'warmup_epochs': 5,  # Longer warmup for DINOv3
         'warmup_momentum': 0.8,
         'warmup_bias_lr': 0.1,
@@ -460,7 +464,7 @@ def train_triple_dinov3(
 
         # Geometric augmentations: ENABLED (spatial transforms work on any number of channels)
         'mosaic': 1.0,    # Mosaic augmentation - crucial for small datasets
-        'close_mosaic': 30,  # Keep mosaic longer for better generalization (was 10)
+        'close_mosaic': close_mosaic,
         'fliplr': 0.5,    # Horizontal flip
         'flipud': 0.5,    # Vertical flip (enabled - helps generalization)
         'translate': 0.1, # Translation
@@ -468,6 +472,7 @@ def train_triple_dinov3(
         'degrees': 10.0,  # Rotation ±10° (helps with object orientation variance)
         'shear': 2.0,     # Shear ±2° (subtle perspective variation)
         'perspective': 0.0,  # Perspective (off - too aggressive for detection)
+        'iou': iou,
         'workers': workers,
         
         # Additional arguments
@@ -825,6 +830,14 @@ def main():
                        help='Only download DINOv3 models without training')
     parser.add_argument('--workers', type=int, default=0,
                        help='Number of DataLoader workers (default 0 = main process only)')
+    parser.add_argument('--lrf', type=float, default=0.001,
+                       help='Final LR ratio (lr0 * lrf = final LR, default 0.001)')
+    parser.add_argument('--weight-decay', type=float, default=0.001,
+                       help='Weight decay for regularization (default 0.001)')
+    parser.add_argument('--close-mosaic', type=int, default=50,
+                       help='Disable mosaic for last N epochs (default 50)')
+    parser.add_argument('--iou', type=float, default=0.5,
+                       help='IoU threshold for NMS (default 0.5, lower = better for thin objects)')
     parser.add_argument('--integrate', type=str, choices=['initial', 'nodino', 'p3', 'p0p3'],
                        default='initial', 
                        help='DINOv3 integration strategy: '
@@ -876,7 +889,11 @@ def main():
             integrate=args.integrate,
             variant=args.variant,
             save_period=args.save_period,
-            workers=args.workers
+            workers=args.workers,
+            lrf=args.lrf,
+            weight_decay=args.weight_decay,
+            close_mosaic=args.close_mosaic,
+            iou=args.iou
         )
 
 if __name__ == "__main__":
