@@ -44,6 +44,7 @@ def train_triple_dinov3(
     integrate: str = "initial",  # New parameter: "initial", "nodino", "p3"
     variant: str = "s",  # YOLOv12 model variant: n, s, m, l, x
     save_period: int = -1,  # Save weights every N epochs (-1 = only best/last)
+    workers: int = 0,
     **kwargs
 ):
     """
@@ -466,7 +467,7 @@ def train_triple_dinov3(
         'degrees': 10.0,  # Rotation ±10° (helps with object orientation variance)
         'shear': 2.0,     # Shear ±2° (subtle perspective variation)
         'perspective': 0.0,  # Perspective (off - too aggressive for detection)
-        'workers': 0,  # Disable multiprocessing workers to avoid DataLoader issues
+        'workers': workers,
         
         # Additional arguments
         **kwargs
@@ -821,7 +822,9 @@ def main():
                        help='Compare with and without DINOv3 backbone')
     parser.add_argument('--download-only', action='store_true',
                        help='Only download DINOv3 models without training')
-    parser.add_argument('--integrate', type=str, choices=['initial', 'nodino', 'p3', 'p0p3'], 
+    parser.add_argument('--workers', type=int, default=0,
+                       help='Number of DataLoader workers (default 0 = main process only)')
+    parser.add_argument('--integrate', type=str, choices=['initial', 'nodino', 'p3', 'p0p3'],
                        default='initial', 
                        help='DINOv3 integration strategy: '
                             'initial (before backbone), '
@@ -871,7 +874,8 @@ def main():
             device=args.device,
             integrate=args.integrate,
             variant=args.variant,
-            save_period=args.save_period
+            save_period=args.save_period,
+            workers=args.workers
         )
 
 if __name__ == "__main__":
