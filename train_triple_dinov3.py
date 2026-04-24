@@ -49,6 +49,7 @@ def train_triple_dinov3(
     weight_decay: float = 0.001,
     close_mosaic: int = 50,
     iou: float = 0.5,
+    cos_lr: bool = False,
     **kwargs
 ):
     """
@@ -473,6 +474,7 @@ def train_triple_dinov3(
         'shear': 2.0,     # Shear ±2° (subtle perspective variation)
         'perspective': 0.0,  # Perspective (off - too aggressive for detection)
         'iou': iou,
+        'cos_lr': cos_lr,
         'workers': workers,
         
         # Additional arguments
@@ -838,6 +840,8 @@ def main():
                        help='Disable mosaic for last N epochs (default 50)')
     parser.add_argument('--iou', type=float, default=0.5,
                        help='IoU threshold for NMS (default 0.5, lower = better for thin objects)')
+    parser.add_argument('--cos-lr', action='store_true',
+                       help='Use cosine LR scheduler instead of linear')
     parser.add_argument('--integrate', type=str, choices=['initial', 'nodino', 'p3', 'p0p3'],
                        default='initial', 
                        help='DINOv3 integration strategy: '
@@ -893,7 +897,8 @@ def main():
             lrf=args.lrf,
             weight_decay=args.weight_decay,
             close_mosaic=args.close_mosaic,
-            iou=args.iou
+            iou=args.iou,
+            cos_lr=args.cos_lr
         )
 
 if __name__ == "__main__":
