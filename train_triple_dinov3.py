@@ -201,6 +201,7 @@ def train_triple_dinov3(
                 pretrained_path=pretrained_path,
                 triple_model_config=_temp_cfg,
                 integrate=integrate,
+                variant=variant,
             )
             model.model.yaml['scale'] = variant
             Path(_temp_cfg).unlink(missing_ok=True)
