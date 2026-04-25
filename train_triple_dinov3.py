@@ -34,34 +34,36 @@ os.environ['COLUMNS'] = '250'
 
 def train_triple_dinov3(
     data_config: str,
-    dinov3_size: str = "small",
+    dinov3_size: str = "base",
     freeze_dinov3: bool = True,
     use_triple_branches: bool = False,
     pretrained_path: str = None,
-    epochs: int = 200,
-    batch_size: int = 8,  # Smaller default due to DINOv3 memory usage
+    epochs: int = 150,
+    batch_size: int = 16,
     imgsz: int = 640,     # Must be 640x640 for correct P3/P4/P5 spatial dimensions
-    patience: int = 60,
-    name: str = "yolov12_triple_dinov3",
+    patience: int = 90,
+    name: str = "yolov12_triple_dinov3_p4_m_scratch_map50_softaug",
     device: str = "0",
-    integrate: str = "initial",  # New parameter: "initial", "nodino", "p3"
-    variant: str = "s",  # YOLOv12 model variant: n, s, m, l, x
-    save_period: int = -1,  # Save weights every N epochs (-1 = only best/last)
-    workers: int = 0,
+    integrate: str = "p4",  # New parameter: "initial", "nodino", "p3"
+    variant: str = "m",  # YOLOv12 model variant: n, s, m, l, x
+    save_period: int = 10,  # Save weights every N epochs (-1 = only best/last)
+    workers: int = 16,
     lr0: float = None,
     lrf: float = 0.01,
     weight_decay: float = 0.0005,
-    close_mosaic: int = 60,
+    warmup_epochs: float = 5,
+    close_mosaic: int = 50,
     iou: float = 0.5,
     cos_lr: bool = True,
     amp: bool = False,
     mosaic: float = 0.25,
-    degrees: float = 5.0,
-    translate: float = 0.1,
-    scale: float = 0.4,
+    degrees: float = 3.0,
+    translate: float = 0.08,
+    scale: float = 0.35,
     shear: float = 0.0,
     flipud: float = 0.0,
     fliplr: float = 0.5,
+    max_background_ratio: float = -1,
     **kwargs
 ):
     """
@@ -447,8 +449,13 @@ def train_triple_dinov3(
     # Force minimum batch size of 2 to avoid BatchNorm issues with batch=1
     effective_batch_size = max(batch_size, 2)
     if lr0 is None:
-        lr0 = 0.001 if integrate == "nodino" else (0.0002 if freeze_dinov3 else 0.00005)
+        lr0 = 0.001 if integrate == "nodino" else (0.00015 if freeze_dinov3 else 0.00005)
     os.environ["YOLO_MAP50_FITNESS"] = "1"
+    if max_background_ratio is not None and max_background_ratio >= 0:
+        os.environ["YOLO_MAX_BACKGROUND_RATIO"] = str(max_background_ratio)
+        os.environ.setdefault("YOLO_BACKGROUND_SEED", "0")
+    else:
+        os.environ.pop("YOLO_MAX_BACKGROUND_RATIO", None)
     train_args = {
         'data': data_config,
         'epochs': epochs,
@@ -469,7 +476,7 @@ def train_triple_dinov3(
         'lrf': lrf,
         'momentum': 0.9,
         'weight_decay': weight_decay,
-        'warmup_epochs': 5,  # Longer warmup for DINOv3
+        'warmup_epochs': warmup_epochs,
         'warmup_momentum': 0.8,
         'warmup_bias_lr': 0.1,
         
@@ -515,6 +522,7 @@ def train_triple_dinov3(
     print(f"  Optimizer: {train_args['optimizer']}")
     print(f"  Mixed precision: {train_args['amp']}")
     print(f"  Warmup epochs: {train_args['warmup_epochs']}")
+    print(f"  Max background ratio: {os.environ.get('YOLO_MAX_BACKGROUND_RATIO', 'disabled')}")
     
     # Step 6: Memory and performance warnings
     print(f"\n⚠️ Step 6: Performance considerations...")
@@ -624,23 +632,35 @@ def train_triple_dinov3(
         else:
             # Standard training without P0 preprocessing
             results = model.train(**train_args)
+
+        save_dir = Path(getattr(getattr(model, "trainer", None), "save_dir", Path("runs/detect") / name))
+        best_path = save_dir / "weights" / "best.pt"
+        last_path = save_dir / "weights" / "last.pt"
         
         print(f"\n✅ Training completed successfully!")
-        print(f"Best model saved to: runs/detect/{name}/weights/best.pt")
-        print(f"Last model saved to: runs/detect/{name}/weights/last.pt")
+        print(f"Best model saved to: {best_path}")
+        print(f"Last model saved to: {last_path}")
         
         # Step 8: Post-training evaluation on all splits
         print(f"\n📊 Step 8: Post-training evaluation on all splits...")
         
+        eval_model = model
+        if best_path.exists():
+            try:
+                eval_model = YOLO(str(best_path))
+            except Exception as e:
+                print(f"  Warning: could not load best.pt for post-training evaluation: {e}")
+                print("  Falling back to the in-memory model.")
+
         # Helper function to evaluate on a specific split
-        def evaluate_split(split_name, model, data_config):
+        def evaluate_split(split_name, eval_model, data_config):
             try:
                 print(f"\n  Evaluating on {split_name} set...")
                 if integrate == "initial" and hasattr(model, 'p0_preprocessor'):
                     print(f"    ⚠️ Skipping {split_name} evaluation for P0 integration to avoid channel mismatch")
                     return None
                 else:
-                    val_results = model.val(data=data_config, split=split_name)
+                    val_results = eval_model.val(data=data_config, split=split_name, device=device, plots=False)
                     if hasattr(val_results, 'box'):
                         map50 = val_results.box.map50
                         map50_95 = val_results.box.map
@@ -651,7 +671,7 @@ def train_triple_dinov3(
                     
                     print(f"    {split_name.capitalize()} mAP50: {map50:.4f}")
                     print(f"    {split_name.capitalize()} mAP50-95: {map50_95:.4f}")
-                    return {'map50': map50, 'map50_95': map50_95}
+                    return {'map50': float(map50), 'map50_95': float(map50_95)}
             except Exception as e:
                 print(f"    ⚠️ {split_name.capitalize()} evaluation failed: {e}")
                 return None
@@ -660,12 +680,12 @@ def train_triple_dinov3(
         results_summary = {}
         
         # Validation set
-        val_results = evaluate_split('val', model, data_config)
+        val_results = evaluate_split('val', eval_model, data_config)
         if val_results:
             results_summary['validation'] = val_results
             
         # Test set (if available)
-        test_results = evaluate_split('test', model, data_config)
+        test_results = evaluate_split('test', eval_model, data_config)
         if test_results:
             results_summary['test'] = test_results
             
@@ -676,7 +696,7 @@ def train_triple_dinov3(
                 print(f"    ⚠️ Skipping train evaluation for P0 integration to avoid channel mismatch")
             else:
                 # For training set, we might want to use a smaller sample for efficiency
-                train_results = model.val(data=data_config, split='train')
+                train_results = eval_model.val(data=data_config, split='train', device=device, plots=False)
                 if hasattr(train_results, 'box'):
                     train_map50 = train_results.box.map50
                     train_map50_95 = train_results.box.map
@@ -686,7 +706,7 @@ def train_triple_dinov3(
                 
                 print(f"    Train mAP50: {train_map50:.4f}")
                 print(f"    Train mAP50-95: {train_map50_95:.4f}")
-                results_summary['train'] = {'map50': train_map50, 'map50_95': train_map50_95}
+                results_summary['train'] = {'map50': float(train_map50), 'map50_95': float(train_map50_95)}
         except Exception as e:
             print(f"    ⚠️ Train evaluation failed: {e}")
         
@@ -841,7 +861,7 @@ def main():
                        help='Path to dataset configuration (.yaml file)')
     parser.add_argument('--dinov3-size', type=str, 
                        choices=['small', 'base', 'large', 'giant', 'sat_large', 'sat_giant'], 
-                       default='small',
+                       default='base',
                        help='DINOv3 model size - impacts accuracy vs speed/memory:\n'
                             'small: 21M params, fastest, lowest memory (384 dim) - good for quick experiments\n'
                             'base: 86M params, balanced performance (768 dim) - recommended for most use cases\n'
@@ -858,36 +878,38 @@ def main():
                        help='Use separate DINOv3 branches for each input')
     parser.add_argument('--pretrained', type=str,
                        help='Path to pretrained YOLOv12 model (.pt file)')
-    parser.add_argument('--epochs', type=int, default=200,
-                       help='Number of training epochs (default: 200)')
-    parser.add_argument('--batch', type=int, default=8,
-                       help='Batch size (default: 8, reduced for DINOv3)')
-    parser.add_argument('--imgsz', type=int, default=224,
-                       help='Image size (default: 224, DINOv3 optimized)')
-    parser.add_argument('--patience', type=int, default=60,
-                       help='Early stopping patience (default: 60)')
-    parser.add_argument('--name', type=str, default='yolov12_triple_dinov3',
-                       help='Experiment name (default: yolov12_triple_dinov3)')
+    parser.add_argument('--epochs', type=int, default=150,
+                       help='Number of training epochs (default: 150)')
+    parser.add_argument('--batch', type=int, default=16,
+                       help='Batch size (default: 16)')
+    parser.add_argument('--imgsz', type=int, default=640,
+                       help='Image size (default: 640)')
+    parser.add_argument('--patience', type=int, default=90,
+                       help='Early stopping patience (default: 90)')
+    parser.add_argument('--name', type=str, default='yolov12_triple_dinov3_p4_m_scratch_map50_softaug',
+                       help='Experiment name (default: yolov12_triple_dinov3_p4_m_scratch_map50_softaug)')
     parser.add_argument('--device', type=str, default='0',
                        help='Device to use (default: 0, use "cpu" for CPU)')
-    parser.add_argument('--variant', type=str, choices=['n', 's', 'm', 'l', 'x'], default='s',
-                       help='YOLOv12 model variant (default: s)')
-    parser.add_argument('--save-period', type=int, default=-1,
-                       help='Save weights every N epochs (-1 = only best/last, saves disk space)')
+    parser.add_argument('--variant', type=str, choices=['n', 's', 'm', 'l', 'x'], default='m',
+                       help='YOLOv12 model variant (default: m)')
+    parser.add_argument('--save-period', type=int, default=10,
+                       help='Save weights every N epochs (-1 = only best/last, default 10)')
     parser.add_argument('--compare', action='store_true',
                        help='Compare with and without DINOv3 backbone')
     parser.add_argument('--download-only', action='store_true',
                        help='Only download DINOv3 models without training')
-    parser.add_argument('--workers', type=int, default=0,
-                       help='Number of DataLoader workers (default 0 = main process only)')
+    parser.add_argument('--workers', type=int, default=16,
+                       help='Number of DataLoader workers (default 16)')
     parser.add_argument('--lr0', type=float, default=None,
-                       help='Initial learning rate. Default: 0.001 for nodino, 0.0002 for frozen DINOv3, 0.00005 for unfrozen DINOv3')
+                       help='Initial learning rate. Default: 0.001 for nodino, 0.00015 for frozen DINOv3, 0.00005 for unfrozen DINOv3')
     parser.add_argument('--lrf', type=float, default=0.01,
                        help='Final LR ratio (lr0 * lrf = final LR, default 0.01)')
     parser.add_argument('--weight-decay', type=float, default=0.0005,
                        help='Weight decay for regularization (default 0.0005)')
-    parser.add_argument('--close-mosaic', type=int, default=60,
-                       help='Disable mosaic for last N epochs (default 60)')
+    parser.add_argument('--warmup-epochs', type=float, default=5,
+                       help='Warmup epochs for optimizer schedule (default 5)')
+    parser.add_argument('--close-mosaic', type=int, default=50,
+                       help='Disable mosaic for last N epochs (default 50)')
     parser.add_argument('--iou', type=float, default=0.5,
                        help='IoU threshold for NMS (default 0.5, lower = better for thin objects)')
     parser.add_argument('--cos-lr', action='store_true', default=True,
@@ -896,20 +918,22 @@ def main():
                        help='Enable mixed precision training. Recommended for nodino; keep off if frozen DINOv3 gives tensor-mode errors')
     parser.add_argument('--mosaic', type=float, default=0.25,
                        help='Mosaic augmentation probability (default 0.25)')
-    parser.add_argument('--degrees', type=float, default=5.0,
-                       help='Rotation augmentation degrees (default 5.0)')
-    parser.add_argument('--translate', type=float, default=0.1,
-                       help='Translation augmentation fraction (default 0.1)')
-    parser.add_argument('--scale', type=float, default=0.4,
-                       help='Scale augmentation gain (default 0.4)')
+    parser.add_argument('--degrees', type=float, default=3.0,
+                       help='Rotation augmentation degrees (default 3.0)')
+    parser.add_argument('--translate', type=float, default=0.08,
+                       help='Translation augmentation fraction (default 0.08)')
+    parser.add_argument('--scale', type=float, default=0.35,
+                       help='Scale augmentation gain (default 0.35)')
     parser.add_argument('--shear', type=float, default=0.0,
                        help='Shear augmentation degrees (default 0.0)')
     parser.add_argument('--flipud', type=float, default=0.0,
                        help='Vertical flip probability (default 0.0)')
     parser.add_argument('--fliplr', type=float, default=0.5,
                        help='Horizontal flip probability (default 0.5)')
+    parser.add_argument('--max-background-ratio', type=float, default=-1,
+                       help='Max train background images as a ratio of labeled images; set -1 to disable (default -1)')
     parser.add_argument('--integrate', type=str, choices=['initial', 'nodino', 'p3', 'p4', 'dual', 'p0p3'],
-                       default='initial',
+                       default='p4',
                        help='DINOv3 integration strategy: '
                             'initial (before backbone), '
                             'nodino (no DINOv3), '
@@ -965,6 +989,7 @@ def main():
             lr0=args.lr0,
             lrf=args.lrf,
             weight_decay=args.weight_decay,
+            warmup_epochs=args.warmup_epochs,
             close_mosaic=args.close_mosaic,
             iou=args.iou,
             cos_lr=args.cos_lr,
@@ -975,7 +1000,8 @@ def main():
             scale=args.scale,
             shear=args.shear,
             flipud=args.flipud,
-            fliplr=args.fliplr
+            fliplr=args.fliplr,
+            max_background_ratio=args.max_background_ratio
         )
 
 if __name__ == "__main__":

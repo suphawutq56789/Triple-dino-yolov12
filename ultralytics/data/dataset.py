@@ -1,6 +1,8 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import json
+import os
+import random
 from collections import defaultdict
 from itertools import repeat
 from multiprocessing.pool import ThreadPool
@@ -156,6 +158,25 @@ class YOLODataset(BaseDataset):
         labels = cache["labels"]
         if not labels:
             LOGGER.warning(f"WARNING ⚠️ No images found in {cache_path}, training may not work correctly. {HELP_URL}")
+        max_bg_ratio = os.environ.get("YOLO_MAX_BACKGROUND_RATIO")
+        if self.augment and max_bg_ratio:
+            try:
+                max_bg_ratio = float(max_bg_ratio)
+            except ValueError:
+                max_bg_ratio = -1.0
+            if max_bg_ratio >= 0:
+                positive_idx = [i for i, lb in enumerate(labels) if len(lb["cls"])]
+                background_idx = [i for i, lb in enumerate(labels) if not len(lb["cls"])]
+                max_backgrounds = int(round(len(positive_idx) * max_bg_ratio))
+                if len(background_idx) > max_backgrounds:
+                    seed = int(os.environ.get("YOLO_BACKGROUND_SEED", "0"))
+                    keep_bg = set(random.Random(seed).sample(background_idx, max_backgrounds))
+                    keep = set(positive_idx) | keep_bg
+                    labels = [lb for i, lb in enumerate(labels) if i in keep]
+                    LOGGER.info(
+                        f"{self.prefix}Limited background images: kept {len(keep_bg)}/{len(background_idx)} "
+                        f"backgrounds with {len(positive_idx)} labeled images (ratio={max_bg_ratio:g})"
+                    )
         self.im_files = [lb["im_file"] for lb in labels]  # update im_files
 
         # Check if the dataset is all boxes or all segments

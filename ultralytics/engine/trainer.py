@@ -514,36 +514,33 @@ class BaseTrainer:
 
     def save_model(self):
         """Save model training checkpoints with additional metadata."""
-        import io
+        ckpt = {
+            "epoch": self.epoch,
+            "best_fitness": self.best_fitness,
+            "model": None,  # resume and final checkpoints derive from EMA
+            "ema": deepcopy(self.ema.ema).half(),
+            "updates": self.ema.updates,
+            "optimizer": convert_optimizer_state_dict_to_fp16(deepcopy(self.optimizer.state_dict())),
+            "train_args": vars(self.args),  # save as dict
+            "train_metrics": {**self.metrics, **{"fitness": self.fitness}},
+            "train_results": self.read_results_csv(),
+            "date": datetime.now().isoformat(),
+            "version": __version__,
+            "license": "AGPL-3.0 (https://ultralytics.com/license)",
+            "docs": "https://docs.ultralytics.com",
+        }
 
-        # Serialize ckpt to a byte buffer once (faster than repeated torch.save() calls)
-        buffer = io.BytesIO()
-        torch.save(
-            {
-                "epoch": self.epoch,
-                "best_fitness": self.best_fitness,
-                "model": None,  # resume and final checkpoints derive from EMA
-                "ema": deepcopy(self.ema.ema).half(),
-                "updates": self.ema.updates,
-                "optimizer": convert_optimizer_state_dict_to_fp16(deepcopy(self.optimizer.state_dict())),
-                "train_args": vars(self.args),  # save as dict
-                "train_metrics": {**self.metrics, **{"fitness": self.fitness}},
-                "train_results": self.read_results_csv(),
-                "date": datetime.now().isoformat(),
-                "version": __version__,
-                "license": "AGPL-3.0 (https://ultralytics.com/license)",
-                "docs": "https://docs.ultralytics.com",
-            },
-            buffer,
-        )
-        serialized_ckpt = buffer.getvalue()  # get the serialized content to save
+        def atomic_torch_save(obj, path):
+            tmp = path.with_suffix(path.suffix + ".tmp")
+            torch.save(obj, tmp)
+            os.replace(tmp, path)
 
-        # Save checkpoints
-        self.last.write_bytes(serialized_ckpt)  # save last.pt
+        # Save checkpoints. Writing through a temp file avoids leaving corrupt .pt files if saving is interrupted.
+        atomic_torch_save(ckpt, self.last)  # save last.pt
         if self.best_fitness == self.fitness:
-            self.best.write_bytes(serialized_ckpt)  # save best.pt
+            atomic_torch_save(ckpt, self.best)  # save best.pt
         if (self.save_period > 0) and (self.epoch % self.save_period == 0):
-            (self.wdir / f"epoch{self.epoch}.pt").write_bytes(serialized_ckpt)  # save epoch, i.e. 'epoch3.pt'
+            atomic_torch_save(ckpt, self.wdir / f"epoch{self.epoch}.pt")  # save epoch, i.e. 'epoch3.pt'
         # if self.args.close_mosaic and self.epoch == (self.epochs - self.args.close_mosaic - 1):
         #    (self.wdir / "last_mosaic.pt").write_bytes(serialized_ckpt)  # save mosaic checkpoint
 
@@ -680,16 +677,19 @@ class BaseTrainer:
         ckpt = {}
         for f in self.last, self.best:
             if f.exists():
-                if f is self.last:
-                    ckpt = strip_optimizer(f)
-                elif f is self.best:
-                    k = "train_results"  # update best.pt train_metrics from last.pt
-                    strip_optimizer(f, updates={k: ckpt[k]} if k in ckpt else None)
-                    LOGGER.info(f"\nValidating {f}...")
-                    self.validator.args.plots = self.args.plots
-                    self.metrics = self.validator(model=f)
-                    self.metrics.pop("fitness", None)
-                    self.run_callbacks("on_fit_epoch_end")
+                try:
+                    if f is self.last:
+                        ckpt = strip_optimizer(f)
+                    elif f is self.best:
+                        k = "train_results"  # update best.pt train_metrics from last.pt
+                        strip_optimizer(f, updates={k: ckpt[k]} if k in ckpt else None)
+                        LOGGER.info(f"\nValidating {f}...")
+                        self.validator.args.plots = self.args.plots
+                        self.metrics = self.validator(model=f)
+                        self.metrics.pop("fitness", None)
+                        self.run_callbacks("on_fit_epoch_end")
+                except Exception as e:
+                    LOGGER.warning(f"Skipping final evaluation for invalid checkpoint {f}: {e}")
 
     def check_resume(self, overrides):
         """Check if resume checkpoint exists and update arguments accordingly."""
