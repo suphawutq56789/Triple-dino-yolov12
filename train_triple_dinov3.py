@@ -840,7 +840,7 @@ def main():
                        help='Disable mosaic for last N epochs (default 10)')
     parser.add_argument('--iou', type=float, default=0.5,
                        help='IoU threshold for NMS (default 0.5, lower = better for thin objects)')
-    parser.add_argument('--cos-lr', action='store_true',
+    parser.add_argument('--cos-lr', action='store_true', default=True,
                        help='Use cosine LR scheduler instead of linear')
     parser.add_argument('--integrate', type=str, choices=['initial', 'nodino', 'p3', 'p0p3'],
                        default='initial', 
