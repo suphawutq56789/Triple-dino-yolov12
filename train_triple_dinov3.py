@@ -449,8 +449,8 @@ def train_triple_dinov3(
         # Optimizer (AdamW often works better with transformers)
         'optimizer': 'AdamW',
         
-        # Mixed precision (helpful for memory with DINOv3) - disabled to avoid BatchNorm issues with small batch
-        'amp': False,
+        # Mixed precision - auto enable for batch>=8 (safe from BatchNorm issues, ~1.5-2x faster)
+        'amp': effective_batch_size >= 8,
         
         # Channel-based augmentations: disabled (incompatible with 9-channel triple input)
         'hsv_h': 0.0,  # Incompatible with 9-channel input
