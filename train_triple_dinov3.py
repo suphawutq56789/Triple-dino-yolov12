@@ -24,10 +24,13 @@ Usage:
 """
 
 import argparse
+import os
 import torch
 from pathlib import Path
 import warnings
 from ultralytics import YOLO
+
+os.environ.setdefault('COLUMNS', '250')
 
 def train_triple_dinov3(
     data_config: str,
