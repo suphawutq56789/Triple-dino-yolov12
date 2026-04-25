@@ -112,9 +112,9 @@ dataset/
         └── img001.txt
 ```
 
-> **Labels**: เฉพาะ main image เท่านั้นที่ต้องมี `.txt` label — `detail1/` และ `detail2/` ใช้ label เดียวกันกับ main โดยอัตโนมัติ
+> **Labels**: Only the main (primary) image requires a `.txt` label file — `detail1/` and `detail2/` share the same label automatically.
 >
-> ถ้าไม่มี `detail1/` หรือ `detail2/` จะ fallback ไปใช้ main image แทนทั้ง 3 stream
+> If `detail1/` or `detail2/` folders are missing, the main image is used as fallback for all 3 streams.
 
 ```yaml
 # data.yaml
@@ -127,7 +127,7 @@ nc: 1
 names: ['your_class']
 ```
 
-> If `detail1/` or `detail2/` are missing, the main image is used as fallback automatically.
+> If `detail1/` or `detail2/` folders are missing, the main image is used as fallback for all 3 streams automatically.
 
 ---
 
