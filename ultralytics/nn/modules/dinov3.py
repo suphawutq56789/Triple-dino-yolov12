@@ -567,6 +567,40 @@ class P3FeatureEnhancer(nn.Module):
         return x
 
 
+class DINOv3FeatureEnhancer(nn.Module):
+    """
+    DINOv3-based feature enhancer for P4/P3 stages.
+    Takes conv feature maps, runs them through DINOv3 for semantic enrichment,
+    outputs enhanced features at the same spatial resolution.
+    """
+
+    def __init__(
+        self,
+        input_channels: int = 512,
+        output_channels: int = 512,
+        model_name: str = "facebook/dinov3-vitl16-pretrain-lvd1689m",
+        freeze: bool = True,
+    ):
+        super().__init__()
+        self.input_channels = input_channels
+        self.output_channels = output_channels
+        self.backbone = DINOv3Backbone(
+            model_name=model_name,
+            input_channels=input_channels,
+            output_channels=output_channels,
+            freeze=freeze,
+            image_size=224,
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.backbone(x)
+
+    def train(self, mode: bool = True):
+        super().train(mode)
+        self.backbone.train(mode)
+        return self
+
+
 class DINOv3TripleBackbone(DINOv3Backbone):
     """
     DINOv3 backbone specifically designed for triple input processing.

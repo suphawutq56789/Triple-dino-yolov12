@@ -64,6 +64,7 @@ from ultralytics.nn.modules import (
     TorchVision,
     TripleInputConv,
     DINOv3Backbone,
+    DINOv3FeatureEnhancer,
     DINOv3TripleBackbone,
     DINOv3BackboneWithAdapter,
     P3FeatureEnhancer,

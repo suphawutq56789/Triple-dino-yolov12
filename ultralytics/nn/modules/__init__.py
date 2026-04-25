@@ -78,6 +78,7 @@ from .conv import (
 )
 from .dinov3 import (
     DINOv3Backbone,
+    DINOv3FeatureEnhancer,
     DINOv3TripleBackbone,
     DINOv3BackboneWithAdapter,
     P3FeatureEnhancer,

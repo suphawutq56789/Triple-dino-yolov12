@@ -165,9 +165,15 @@ def train_triple_dinov3(
     elif integrate == "p0p3":
         model_config = "ultralytics/cfg/models/v12/yolov12_triple_dinov3_p0p3_adapter.yaml"
         print("Using adapter-based dual DINOv3 integration (before backbone + after P3) - all variants")
+    elif integrate == "p4":
+        model_config = "ultralytics/cfg/models/v12/yolov12_triple_dinov3_p4.yaml"
+        print("Using real DINOv3 feature enhancement after P4 stage (triple input)")
+    elif integrate == "dual":
+        model_config = "ultralytics/cfg/models/v12/yolov12_triple_dinov3_dual.yaml"
+        print("Using real DINOv3 at both P3 and P4 stages (dual enhancement)")
     else:
         print(f"❌ Unknown integration strategy: {integrate}")
-        print("Available options: initial, nodino, p3, p0p3")
+        print("Available options: initial, nodino, p3, p4, p0p3")
         return None
     
     if not Path(model_config).exists():
@@ -247,7 +253,7 @@ def train_triple_dinov3(
                     config = yaml.safe_load(f)
                 
                 # Update DINOv3 model size and configuration
-                if integrate in ["initial", "p3", "p0p3"]:
+                if integrate in ["initial", "p3", "p4", "dual", "p0p3"]:
                     # Map model sizes to HuggingFace model names
                     model_name_map = {
                         "small": "facebook/dinov3-vits16-pretrain-lvd1689m",
@@ -267,17 +273,22 @@ def train_triple_dinov3(
                         # DINOv3 preprocesses 9-ch → 64-ch, backbone receives 64-ch input
                         config['ch'] = 64  # DINOv3 P0 output channels
                     elif integrate == "p3":
-                        # Update the P3 feature enhancement configuration (using conv-based approach)
-                        # P3FeatureEnhancer has simpler args: [input_channels, output_channels]
-                        
-                        # Calculate scaled channels for P3 enhancement
-                        width_scaling = {'n': 0.25, 's': 0.5, 'm': 1.0, 'l': 1.0, 'x': 1.5}
-                        scale_factor = width_scaling.get(variant, 1.0)
-                        
-                        # P3 enhancer: receives scaled input from P3 stage, outputs base channels that will be scaled
-                        # Base 256 ensures compatibility: 256 * 0.25 = 64, 256 * 0.5 = 128, etc.
-                        # Note: YOLO parse_model will automatically set input_channels from previous layer
-                        config['backbone'][5][-1][1] = 256  # Target output channels (base, will be scaled)
+                        # Update DINOv3FeatureEnhancer at layer 5 (P3 stage)
+                        config['backbone'][5][-1][2] = dino_model_name  # model name
+                        config['backbone'][5][-1][3] = freeze_dinov3    # freeze setting
+                        print(f"P3 DINOv3 Feature Enhancement: real DINOv3 after P3 stage, variant '{variant}'")
+                    elif integrate == "p4":
+                        # Update DINOv3FeatureEnhancer at layer 7 (P4 stage)
+                        config['backbone'][7][-1][2] = dino_model_name  # model name
+                        config['backbone'][7][-1][3] = freeze_dinov3    # freeze setting
+                        print(f"P4 DINOv3 Feature Enhancement: after P4 stage, variant '{variant}'")
+                    elif integrate == "dual":
+                        # Update DINOv3FeatureEnhancer at layer 5 (P3) and layer 8 (P4)
+                        config['backbone'][5][-1][2] = dino_model_name  # P3 model name
+                        config['backbone'][5][-1][3] = freeze_dinov3    # P3 freeze
+                        config['backbone'][8][-1][2] = dino_model_name  # P4 model name
+                        config['backbone'][8][-1][3] = freeze_dinov3    # P4 freeze
+                        print(f"Dual DINOv3: P3 + P4 enhancement, variant '{variant}'")
                     elif integrate == "p0p3":
                         # P0P3 with adapter pattern - update model names and freeze settings
                         config['backbone'][0][-1][0] = dino_model_name  # P0 DINOv3 model name
@@ -845,12 +856,14 @@ def main():
                        help='IoU threshold for NMS (default 0.5, lower = better for thin objects)')
     parser.add_argument('--cos-lr', action='store_true', default=True,
                        help='Use cosine LR scheduler instead of linear')
-    parser.add_argument('--integrate', type=str, choices=['initial', 'nodino', 'p3', 'p0p3'],
-                       default='initial', 
+    parser.add_argument('--integrate', type=str, choices=['initial', 'nodino', 'p3', 'p4', 'dual', 'p0p3'],
+                       default='initial',
                        help='DINOv3 integration strategy: '
                             'initial (before backbone), '
                             'nodino (no DINOv3), '
-                            'p3 (after P3 stage), '
+                            'p3 (real DINOv3 after P3), '
+                            'p4 (real DINOv3 after P4), '
+                            'dual (real DINOv3 at P3+P4), '
                             'p0p3 (dual DINOv3: before backbone + after P3)')
     
     args = parser.parse_args()

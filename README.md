@@ -54,6 +54,7 @@ This repository extends YOLOv12 with **Triple Input Architecture** and **DINOv3 
 
 ## Updates
 
+- **2026/04/25**: 🔥 **New Integration Modes Added!** `p4` (real DINOv3 at P4 stage) and `dual` (real DINOv3 at P3+P4 simultaneously) modes. Fixed `p3` mode to use actual DINOv3 ViT instead of conv attention. Added `DINOv3FeatureEnhancer` module for flexible feature-level DINOv3 integration.
 - **2025/10/02**: 🛰️ **DINOv3 Satellite Variants** added! Support for satellite-trained DINOv3 models (SAT-493M dataset) with `sat_large` (ViT-L/16, 300M params) and `sat_giant` (ViT-7B/16, 6.7B params) for enhanced aerial and satellite imagery analysis.
 - **2025/09/20**: 🎉 **Triple Input Architecture with DINOv3** released by KMUTT Civil Engineering Research Group! Process multiple images simultaneously with state-of-the-art vision transformer features for enhanced detection accuracy in civil engineering applications.
 - **2025/09/20**: 🤖 **DINOv3 Integration** - Complete implementation with HuggingFace model support, automatic downloading, and frozen backbone training.
