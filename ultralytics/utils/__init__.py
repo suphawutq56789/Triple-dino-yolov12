@@ -164,6 +164,7 @@ class TQDM(tqdm_original):
         """
         kwargs["disable"] = not VERBOSE or kwargs.get("disable", False)  # logical 'and' with default value if passed
         kwargs.setdefault("bar_format", TQDM_BAR_FORMAT)  # override default value if passed
+        kwargs.setdefault("leave", True)  # keep bar visible after completion
         super().__init__(*args, **kwargs)
 
 
