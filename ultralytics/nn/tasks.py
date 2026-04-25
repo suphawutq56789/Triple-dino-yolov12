@@ -1081,6 +1081,11 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             c1 = 9  # Force 9 input channels for triple input
             c2 = args[0]
             args = [c1, c2, *args[1:]]
+        elif m is DINOv3FeatureEnhancer:
+            # input_channels must match actual previous layer output (scaled by variant width)
+            c1 = ch[f]
+            c2 = c1  # output same channels as input
+            args = [c1, c2, *args[2:]]  # [input_channels, output_channels, model_name, freeze]
         elif m in {DINOv3Backbone, DINOv3TripleBackbone, DINOv3BackboneWithAdapter, P3FeatureEnhancer}:
             # Special handling for DINOv3 backbones and P3FeatureEnhancer
             if m is P3FeatureEnhancer:
