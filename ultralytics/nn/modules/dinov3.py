@@ -387,6 +387,10 @@ class DINOv3Backbone(nn.Module):
                 if not self.use_cls_token and features.size(1) % (14*14) != 0:
                     features = features[:, 1:, :]  # Remove CLS token
         
+        # Clone to escape inference_mode context before passing to trainable adapter
+        if self.freeze:
+            features = features.clone()
+
         # Adapt features for YOLOv12
         features = self.feature_adapter(features)  # [B, N, output_channels]
         
