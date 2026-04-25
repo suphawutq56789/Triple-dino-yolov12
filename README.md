@@ -96,18 +96,25 @@ export HUGGINGFACE_HUB_TOKEN="hf_your_token_here"
 dataset/
 ├── images/
 │   ├── train/
-│   │   ├── img001.jpg          ← main image
+│   │   ├── img001.jpg              ← main image (has label)
 │   │   ├── detail1/
-│   │   │   └── img001.jpg      ← detail view 1
+│   │   │   └── img001.jpg          ← detail view 1 (no label needed)
 │   │   └── detail2/
-│   │       └── img001.jpg      ← detail view 2
-│   ├── val/  (same structure)
-│   └── test/ (same structure)
+│   │       └── img001.jpg          ← detail view 2 (no label needed)
+│   ├── val/   (same structure)
+│   └── test/  (same structure)
 └── labels/
     ├── train/
+    │   └── img001.txt              ← label for main image ONLY
     ├── val/
+    │   └── img001.txt
     └── test/
+        └── img001.txt
 ```
+
+> **Labels**: เฉพาะ main image เท่านั้นที่ต้องมี `.txt` label — `detail1/` และ `detail2/` ใช้ label เดียวกันกับ main โดยอัตโนมัติ
+>
+> ถ้าไม่มี `detail1/` หรือ `detail2/` จะ fallback ไปใช้ main image แทนทั้ง 3 stream
 
 ```yaml
 # data.yaml
