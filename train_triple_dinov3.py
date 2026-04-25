@@ -35,21 +35,21 @@ def train_triple_dinov3(
     freeze_dinov3: bool = True,
     use_triple_branches: bool = False,
     pretrained_path: str = None,
-    epochs: int = 100,
+    epochs: int = 200,
     batch_size: int = 8,  # Smaller default due to DINOv3 memory usage
     imgsz: int = 224,     # DINOv3 default size
-    patience: int = 50,
+    patience: int = 30,
     name: str = "yolov12_triple_dinov3",
     device: str = "0",
     integrate: str = "initial",  # New parameter: "initial", "nodino", "p3"
     variant: str = "s",  # YOLOv12 model variant: n, s, m, l, x
     save_period: int = -1,  # Save weights every N epochs (-1 = only best/last)
     workers: int = 0,
-    lrf: float = 0.001,
+    lrf: float = 0.01,
     weight_decay: float = 0.001,
-    close_mosaic: int = 50,
+    close_mosaic: int = 10,
     iou: float = 0.5,
-    cos_lr: bool = False,
+    cos_lr: bool = True,
     **kwargs
 ):
     """
@@ -468,10 +468,10 @@ def train_triple_dinov3(
         'close_mosaic': close_mosaic,
         'fliplr': 0.5,    # Horizontal flip
         'flipud': 0.5,    # Vertical flip (enabled - helps generalization)
-        'translate': 0.1, # Translation
-        'scale': 0.5,     # Scale jitter
-        'degrees': 10.0,  # Rotation ±10° (helps with object orientation variance)
-        'shear': 2.0,     # Shear ±2° (subtle perspective variation)
+        'translate': 0.2, # Translation (increased for more position variance)
+        'scale': 0.7,     # Scale jitter (increased for more size variance)
+        'degrees': 15.0,  # Rotation ±15° (helps with object orientation variance)
+        'shear': 5.0,     # Shear ±5° (more perspective variation)
         'perspective': 0.0,  # Perspective (off - too aggressive for detection)
         'iou': iou,
         'cos_lr': cos_lr,
@@ -810,14 +810,14 @@ def main():
                        help='Use separate DINOv3 branches for each input')
     parser.add_argument('--pretrained', type=str,
                        help='Path to pretrained YOLOv12 model (.pt file)')
-    parser.add_argument('--epochs', type=int, default=100,
-                       help='Number of training epochs (default: 100)')
+    parser.add_argument('--epochs', type=int, default=200,
+                       help='Number of training epochs (default: 200)')
     parser.add_argument('--batch', type=int, default=8,
                        help='Batch size (default: 8, reduced for DINOv3)')
     parser.add_argument('--imgsz', type=int, default=224,
                        help='Image size (default: 224, DINOv3 optimized)')
-    parser.add_argument('--patience', type=int, default=50,
-                       help='Early stopping patience (default: 50)')
+    parser.add_argument('--patience', type=int, default=30,
+                       help='Early stopping patience (default: 30)')
     parser.add_argument('--name', type=str, default='yolov12_triple_dinov3',
                        help='Experiment name (default: yolov12_triple_dinov3)')
     parser.add_argument('--device', type=str, default='0',
@@ -832,12 +832,12 @@ def main():
                        help='Only download DINOv3 models without training')
     parser.add_argument('--workers', type=int, default=0,
                        help='Number of DataLoader workers (default 0 = main process only)')
-    parser.add_argument('--lrf', type=float, default=0.001,
-                       help='Final LR ratio (lr0 * lrf = final LR, default 0.001)')
+    parser.add_argument('--lrf', type=float, default=0.01,
+                       help='Final LR ratio (lr0 * lrf = final LR, default 0.01)')
     parser.add_argument('--weight-decay', type=float, default=0.001,
                        help='Weight decay for regularization (default 0.001)')
-    parser.add_argument('--close-mosaic', type=int, default=50,
-                       help='Disable mosaic for last N epochs (default 50)')
+    parser.add_argument('--close-mosaic', type=int, default=10,
+                       help='Disable mosaic for last N epochs (default 10)')
     parser.add_argument('--iou', type=float, default=0.5,
                        help='IoU threshold for NMS (default 0.5, lower = better for thin objects)')
     parser.add_argument('--cos-lr', action='store_true',
