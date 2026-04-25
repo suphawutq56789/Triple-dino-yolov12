@@ -1599,7 +1599,6 @@ class LetterBox:
         channels = img.shape[2] if len(img.shape) == 3 else 1
         
         # Use manual padding for all cases to avoid OpenCV copyMakeBorder issues with >3 channels
-        import numpy as np
         h, w = img.shape[:2]
         new_h, new_w = h + top + bottom, w + left + right
         
