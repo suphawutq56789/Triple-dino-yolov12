@@ -41,7 +41,7 @@ def train_triple_dinov3(
     epochs: int = 200,
     batch_size: int = 8,  # Smaller default due to DINOv3 memory usage
     imgsz: int = 640,     # Must be 640x640 for correct P3/P4/P5 spatial dimensions
-    patience: int = 30,
+    patience: int = 60,
     name: str = "yolov12_triple_dinov3",
     device: str = "0",
     integrate: str = "initial",  # New parameter: "initial", "nodino", "p3"
@@ -51,11 +51,11 @@ def train_triple_dinov3(
     lr0: float = None,
     lrf: float = 0.01,
     weight_decay: float = 0.0005,
-    close_mosaic: int = 30,
+    close_mosaic: int = 60,
     iou: float = 0.5,
     cos_lr: bool = True,
     amp: bool = False,
-    mosaic: float = 0.5,
+    mosaic: float = 0.25,
     degrees: float = 5.0,
     translate: float = 0.1,
     scale: float = 0.4,
@@ -447,7 +447,8 @@ def train_triple_dinov3(
     # Force minimum batch size of 2 to avoid BatchNorm issues with batch=1
     effective_batch_size = max(batch_size, 2)
     if lr0 is None:
-        lr0 = 0.001 if integrate == "nodino" else (0.0003 if freeze_dinov3 else 0.00005)
+        lr0 = 0.001 if integrate == "nodino" else (0.0002 if freeze_dinov3 else 0.00005)
+    os.environ["YOLO_MAP50_FITNESS"] = "1"
     train_args = {
         'data': data_config,
         'epochs': epochs,
@@ -863,8 +864,8 @@ def main():
                        help='Batch size (default: 8, reduced for DINOv3)')
     parser.add_argument('--imgsz', type=int, default=224,
                        help='Image size (default: 224, DINOv3 optimized)')
-    parser.add_argument('--patience', type=int, default=30,
-                       help='Early stopping patience (default: 30)')
+    parser.add_argument('--patience', type=int, default=60,
+                       help='Early stopping patience (default: 60)')
     parser.add_argument('--name', type=str, default='yolov12_triple_dinov3',
                        help='Experiment name (default: yolov12_triple_dinov3)')
     parser.add_argument('--device', type=str, default='0',
@@ -880,21 +881,21 @@ def main():
     parser.add_argument('--workers', type=int, default=0,
                        help='Number of DataLoader workers (default 0 = main process only)')
     parser.add_argument('--lr0', type=float, default=None,
-                       help='Initial learning rate. Default: 0.001 for nodino, 0.0003 for frozen DINOv3, 0.00005 for unfrozen DINOv3')
+                       help='Initial learning rate. Default: 0.001 for nodino, 0.0002 for frozen DINOv3, 0.00005 for unfrozen DINOv3')
     parser.add_argument('--lrf', type=float, default=0.01,
                        help='Final LR ratio (lr0 * lrf = final LR, default 0.01)')
     parser.add_argument('--weight-decay', type=float, default=0.0005,
                        help='Weight decay for regularization (default 0.0005)')
-    parser.add_argument('--close-mosaic', type=int, default=30,
-                       help='Disable mosaic for last N epochs (default 30)')
+    parser.add_argument('--close-mosaic', type=int, default=60,
+                       help='Disable mosaic for last N epochs (default 60)')
     parser.add_argument('--iou', type=float, default=0.5,
                        help='IoU threshold for NMS (default 0.5, lower = better for thin objects)')
     parser.add_argument('--cos-lr', action='store_true', default=True,
                        help='Use cosine LR scheduler instead of linear')
     parser.add_argument('--amp', action='store_true',
                        help='Enable mixed precision training. Recommended for nodino; keep off if frozen DINOv3 gives tensor-mode errors')
-    parser.add_argument('--mosaic', type=float, default=0.5,
-                       help='Mosaic augmentation probability (default 0.5)')
+    parser.add_argument('--mosaic', type=float, default=0.25,
+                       help='Mosaic augmentation probability (default 0.25)')
     parser.add_argument('--degrees', type=float, default=5.0,
                        help='Rotation augmentation degrees (default 5.0)')
     parser.add_argument('--translate', type=float, default=0.1,

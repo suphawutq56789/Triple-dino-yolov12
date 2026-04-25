@@ -2,6 +2,7 @@
 """Model validation metrics."""
 
 import math
+import os
 import warnings
 from pathlib import Path
 
@@ -747,6 +748,8 @@ class Metric(SimpleClass):
 
     def fitness(self):
         """Model fitness as a weighted combination of metrics."""
+        if os.getenv("YOLO_MAP50_FITNESS") == "1":
+            return self.map50
         w = [0.0, 0.0, 0.1, 0.9]  # weights for [P, R, mAP@0.5, mAP@0.5:0.95]
         return (np.array(self.mean_results()) * w).sum()
 
