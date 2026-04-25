@@ -119,9 +119,10 @@ dataset/
 ```yaml
 # data.yaml
 path: /path/to/dataset
-train: images/train
-val:   images/val
-test:  images/test
+train: images/primary/train
+val:   images/primary/val
+test:  images/primary/test
+triple_input: true          # Enable triple input mode (required)
 nc: 1
 names: ['your_class']
 ```
