@@ -50,17 +50,17 @@ def train_triple_dinov3(
     workers: int = 0,
     lr0: float = None,
     lrf: float = 0.01,
-    weight_decay: float = 0.001,
-    close_mosaic: int = 10,
+    weight_decay: float = 0.0005,
+    close_mosaic: int = 30,
     iou: float = 0.5,
     cos_lr: bool = True,
     amp: bool = False,
-    mosaic: float = 1.0,
-    degrees: float = 15.0,
-    translate: float = 0.2,
-    scale: float = 0.7,
-    shear: float = 5.0,
-    flipud: float = 0.5,
+    mosaic: float = 0.5,
+    degrees: float = 5.0,
+    translate: float = 0.1,
+    scale: float = 0.4,
+    shear: float = 0.0,
+    flipud: float = 0.0,
     fliplr: float = 0.5,
     **kwargs
 ):
@@ -447,7 +447,7 @@ def train_triple_dinov3(
     # Force minimum batch size of 2 to avoid BatchNorm issues with batch=1
     effective_batch_size = max(batch_size, 2)
     if lr0 is None:
-        lr0 = 0.001 if integrate == "nodino" else (0.0005 if freeze_dinov3 else 0.0001)
+        lr0 = 0.001 if integrate == "nodino" else (0.0003 if freeze_dinov3 else 0.00005)
     train_args = {
         'data': data_config,
         'epochs': epochs,
@@ -859,31 +859,31 @@ def main():
     parser.add_argument('--workers', type=int, default=0,
                        help='Number of DataLoader workers (default 0 = main process only)')
     parser.add_argument('--lr0', type=float, default=None,
-                       help='Initial learning rate. Default: 0.001 for nodino, 0.0005 for frozen DINOv3, 0.0001 for unfrozen DINOv3')
+                       help='Initial learning rate. Default: 0.001 for nodino, 0.0003 for frozen DINOv3, 0.00005 for unfrozen DINOv3')
     parser.add_argument('--lrf', type=float, default=0.01,
                        help='Final LR ratio (lr0 * lrf = final LR, default 0.01)')
-    parser.add_argument('--weight-decay', type=float, default=0.001,
-                       help='Weight decay for regularization (default 0.001)')
-    parser.add_argument('--close-mosaic', type=int, default=10,
-                       help='Disable mosaic for last N epochs (default 10)')
+    parser.add_argument('--weight-decay', type=float, default=0.0005,
+                       help='Weight decay for regularization (default 0.0005)')
+    parser.add_argument('--close-mosaic', type=int, default=30,
+                       help='Disable mosaic for last N epochs (default 30)')
     parser.add_argument('--iou', type=float, default=0.5,
                        help='IoU threshold for NMS (default 0.5, lower = better for thin objects)')
     parser.add_argument('--cos-lr', action='store_true', default=True,
                        help='Use cosine LR scheduler instead of linear')
     parser.add_argument('--amp', action='store_true',
                        help='Enable mixed precision training. Recommended for nodino; keep off if frozen DINOv3 gives tensor-mode errors')
-    parser.add_argument('--mosaic', type=float, default=1.0,
-                       help='Mosaic augmentation probability (default 1.0)')
-    parser.add_argument('--degrees', type=float, default=15.0,
-                       help='Rotation augmentation degrees (default 15.0)')
-    parser.add_argument('--translate', type=float, default=0.2,
-                       help='Translation augmentation fraction (default 0.2)')
-    parser.add_argument('--scale', type=float, default=0.7,
-                       help='Scale augmentation gain (default 0.7)')
-    parser.add_argument('--shear', type=float, default=5.0,
-                       help='Shear augmentation degrees (default 5.0)')
-    parser.add_argument('--flipud', type=float, default=0.5,
-                       help='Vertical flip probability (default 0.5)')
+    parser.add_argument('--mosaic', type=float, default=0.5,
+                       help='Mosaic augmentation probability (default 0.5)')
+    parser.add_argument('--degrees', type=float, default=5.0,
+                       help='Rotation augmentation degrees (default 5.0)')
+    parser.add_argument('--translate', type=float, default=0.1,
+                       help='Translation augmentation fraction (default 0.1)')
+    parser.add_argument('--scale', type=float, default=0.4,
+                       help='Scale augmentation gain (default 0.4)')
+    parser.add_argument('--shear', type=float, default=0.0,
+                       help='Shear augmentation degrees (default 0.0)')
+    parser.add_argument('--flipud', type=float, default=0.0,
+                       help='Vertical flip probability (default 0.0)')
     parser.add_argument('--fliplr', type=float, default=0.5,
                        help='Horizontal flip probability (default 0.5)')
     parser.add_argument('--integrate', type=str, choices=['initial', 'nodino', 'p3', 'p4', 'dual', 'p0p3'],
