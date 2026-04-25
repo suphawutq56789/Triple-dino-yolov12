@@ -214,21 +214,32 @@ class DINOv3Backbone(nn.Module):
             raise ImportError("timm is required for DINOv3 fallback. Install with: pip install timm")
         
         try:
-            # Map HuggingFace names to timm names
-            timm_name_map = {
-                "facebook/dinov3-small": "vit_small_patch14_dinov3",
-                "facebook/dinov3-base": "vit_base_patch14_dinov3", 
-                "facebook/dinov3-large": "vit_large_patch14_dinov3"
-            }
-            
-            timm_name = timm_name_map.get(self.model_name, "vit_small_patch14_dinov3")
-            
-            self.dino_model = timm.create_model(
-                timm_name,
-                pretrained=self.pretrained,
-                num_classes=0,  # Remove classification head
-                global_pool=""  # Remove global pooling
-            )
+            name = self.model_name.lower()
+            if "vitb" in name or "base" in name:
+                candidates = ["vit_base_patch14_dinov2.lvd142m", "vit_base_patch14_dinov2"]
+            elif "vitl" in name or "large" in name:
+                candidates = ["vit_large_patch14_dinov2.lvd142m", "vit_large_patch14_dinov2"]
+            elif "vit7b" in name or "giant" in name:
+                candidates = ["vit_giant_patch14_dinov2.lvd142m", "vit_giant_patch14_dinov2"]
+            else:
+                candidates = ["vit_small_patch14_dinov2.lvd142m", "vit_small_patch14_dinov2"]
+
+            last_error = None
+            for timm_name in candidates:
+                try:
+                    self.dino_model = timm.create_model(
+                        timm_name,
+                        pretrained=self.pretrained,
+                        num_classes=0,  # Remove classification head
+                        global_pool=""  # Remove global pooling
+                    )
+                    break
+                except Exception as e:
+                    last_error = e
+                    self.dino_model = None
+
+            if self.dino_model is None:
+                raise last_error
             
             print(f"✓ Successfully loaded DINOv3 from timm: {timm_name}")
             
@@ -593,7 +604,11 @@ class DINOv3FeatureEnhancer(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.backbone(x)
+        h, w = x.shape[-2:]
+        y = self.backbone(x)
+        if y.shape[-2:] != (h, w):
+            y = nn.functional.interpolate(y, size=(h, w), mode="bilinear", align_corners=False)
+        return y
 
     def train(self, mode: bool = True):
         super().train(mode)
