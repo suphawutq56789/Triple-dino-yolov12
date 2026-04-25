@@ -48,11 +48,20 @@ def train_triple_dinov3(
     variant: str = "s",  # YOLOv12 model variant: n, s, m, l, x
     save_period: int = -1,  # Save weights every N epochs (-1 = only best/last)
     workers: int = 0,
+    lr0: float = None,
     lrf: float = 0.01,
     weight_decay: float = 0.001,
     close_mosaic: int = 10,
     iou: float = 0.5,
     cos_lr: bool = True,
+    amp: bool = False,
+    mosaic: float = 1.0,
+    degrees: float = 15.0,
+    translate: float = 0.2,
+    scale: float = 0.7,
+    shear: float = 5.0,
+    flipud: float = 0.5,
+    fliplr: float = 0.5,
     **kwargs
 ):
     """
@@ -232,6 +241,7 @@ def train_triple_dinov3(
                 
                 # Ensure input channels are set correctly for triple input
                 config['ch'] = 9  # Set input channels to 9 for triple input
+                config['scale'] = variant  # ensure correct scale is picked from scales: dict
                 
                 # Create temporary config file with correct settings and variant
                 temp_config_path = f"temp_yolov12_triple_nodino_{variant}.yaml"
@@ -436,6 +446,8 @@ def train_triple_dinov3(
     # Training configuration optimized for DINOv3
     # Force minimum batch size of 2 to avoid BatchNorm issues with batch=1
     effective_batch_size = max(batch_size, 2)
+    if lr0 is None:
+        lr0 = 0.001 if integrate == "nodino" else (0.0005 if freeze_dinov3 else 0.0001)
     train_args = {
         'data': data_config,
         'epochs': epochs,
@@ -452,7 +464,7 @@ def train_triple_dinov3(
         'device': device,
         
         # Learning rate configuration for DINOv3
-        'lr0': 0.0005 if freeze_dinov3 else 0.0001,  # Lower LR if fine-tuning DINOv3
+        'lr0': lr0,
         'lrf': lrf,
         'momentum': 0.9,
         'weight_decay': weight_decay,
@@ -464,7 +476,7 @@ def train_triple_dinov3(
         'optimizer': 'AdamW',
         
         # Mixed precision disabled - inference_mode tensor conflict with frozen DINOv3
-        'amp': False,
+        'amp': amp,
         
         # Channel-based augmentations: disabled (incompatible with 9-channel triple input)
         'hsv_h': 0.0,  # Incompatible with 9-channel input
@@ -478,14 +490,14 @@ def train_triple_dinov3(
         'plots': False,  # Visualization incompatible with 9-channel input
 
         # Geometric augmentations: ENABLED (spatial transforms work on any number of channels)
-        'mosaic': 1.0,    # Mosaic augmentation - crucial for small datasets
+        'mosaic': mosaic,    # Mosaic augmentation - crucial for small datasets
         'close_mosaic': close_mosaic,
-        'fliplr': 0.5,    # Horizontal flip
-        'flipud': 0.5,    # Vertical flip (enabled - helps generalization)
-        'translate': 0.2, # Translation (increased for more position variance)
-        'scale': 0.7,     # Scale jitter (increased for more size variance)
-        'degrees': 15.0,  # Rotation ±15° (helps with object orientation variance)
-        'shear': 5.0,     # Shear ±5° (more perspective variation)
+        'fliplr': fliplr,    # Horizontal flip
+        'flipud': flipud,    # Vertical flip
+        'translate': translate,
+        'scale': scale,
+        'degrees': degrees,
+        'shear': shear,
         'perspective': 0.0,  # Perspective (off - too aggressive for detection)
         'iou': iou,
         'cos_lr': cos_lr,
@@ -846,6 +858,8 @@ def main():
                        help='Only download DINOv3 models without training')
     parser.add_argument('--workers', type=int, default=0,
                        help='Number of DataLoader workers (default 0 = main process only)')
+    parser.add_argument('--lr0', type=float, default=None,
+                       help='Initial learning rate. Default: 0.001 for nodino, 0.0005 for frozen DINOv3, 0.0001 for unfrozen DINOv3')
     parser.add_argument('--lrf', type=float, default=0.01,
                        help='Final LR ratio (lr0 * lrf = final LR, default 0.01)')
     parser.add_argument('--weight-decay', type=float, default=0.001,
@@ -856,6 +870,22 @@ def main():
                        help='IoU threshold for NMS (default 0.5, lower = better for thin objects)')
     parser.add_argument('--cos-lr', action='store_true', default=True,
                        help='Use cosine LR scheduler instead of linear')
+    parser.add_argument('--amp', action='store_true',
+                       help='Enable mixed precision training. Recommended for nodino; keep off if frozen DINOv3 gives tensor-mode errors')
+    parser.add_argument('--mosaic', type=float, default=1.0,
+                       help='Mosaic augmentation probability (default 1.0)')
+    parser.add_argument('--degrees', type=float, default=15.0,
+                       help='Rotation augmentation degrees (default 15.0)')
+    parser.add_argument('--translate', type=float, default=0.2,
+                       help='Translation augmentation fraction (default 0.2)')
+    parser.add_argument('--scale', type=float, default=0.7,
+                       help='Scale augmentation gain (default 0.7)')
+    parser.add_argument('--shear', type=float, default=5.0,
+                       help='Shear augmentation degrees (default 5.0)')
+    parser.add_argument('--flipud', type=float, default=0.5,
+                       help='Vertical flip probability (default 0.5)')
+    parser.add_argument('--fliplr', type=float, default=0.5,
+                       help='Horizontal flip probability (default 0.5)')
     parser.add_argument('--integrate', type=str, choices=['initial', 'nodino', 'p3', 'p4', 'dual', 'p0p3'],
                        default='initial',
                        help='DINOv3 integration strategy: '
@@ -910,11 +940,20 @@ def main():
             variant=args.variant,
             save_period=args.save_period,
             workers=args.workers,
+            lr0=args.lr0,
             lrf=args.lrf,
             weight_decay=args.weight_decay,
             close_mosaic=args.close_mosaic,
             iou=args.iou,
-            cos_lr=args.cos_lr
+            cos_lr=args.cos_lr,
+            amp=args.amp,
+            mosaic=args.mosaic,
+            degrees=args.degrees,
+            translate=args.translate,
+            scale=args.scale,
+            shear=args.shear,
+            flipud=args.flipud,
+            fliplr=args.fliplr
         )
 
 if __name__ == "__main__":

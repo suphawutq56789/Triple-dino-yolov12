@@ -92,15 +92,12 @@ def seed_worker(worker_id):  # noqa
 def build_yolo_dataset(cfg, img_path, batch, data, mode="train", rect=False, stride=32, multi_modal=False):
     """Build YOLO Dataset."""
     
-    # Check if this is a triple input dataset structure
-    from pathlib import Path
-    base_path = Path(img_path).parent.parent if Path(img_path).parent.parent.exists() else Path(img_path).parent
-    expected_folders = ["primary", "detail1", "detail2"]
-    is_triple_input = all((base_path / folder).exists() for folder in expected_folders)
+    # Check if this is a triple input dataset structure.
+    from ultralytics.data.triple_dataset import TripleInputDataset
+    is_triple_input = TripleInputDataset._find_triple_layout(Path(img_path)) is not None
     
     if is_triple_input:
-        # Import and use TripleInputDataset for triple input
-        from ultralytics.data.triple_dataset import TripleInputDataset
+        # Use TripleInputDataset for triple input
         from ultralytics.utils import LOGGER
         LOGGER.info(f"Triple input structure detected - using TripleInputDataset for {mode}")
         

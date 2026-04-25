@@ -39,15 +39,39 @@ class TripleInputDataset(YOLODataset):
     
     def _detect_triple_input_structure(self):
         """Detect if the dataset has triple input structure (primary, detail1, detail2)."""
-        base_path = Path(self.img_path).parent.parent
-        
-        expected_folders = ["primary", "detail1", "detail2"]
-        for folder in expected_folders:
-            folder_path = base_path / folder / Path(self.img_path).name
-            if not folder_path.exists():
-                return False
-        
-        return True
+        return self._find_triple_layout(Path(self.img_path)) is not None
+
+    @staticmethod
+    def _find_triple_layout(path):
+        """Return a callable that maps an image file to its three branch paths."""
+        expected = ("primary", "detail1", "detail2")
+        parts = path.parts
+        if "images" not in parts:
+            return None
+
+        images_idx = parts.index("images")
+        images_root = Path(*parts[: images_idx + 1])
+        rel = parts[images_idx + 1 :]
+
+        # Layout A: images/train/detail1/*.jpg, siblings are images/train/{primary,detail1,detail2}
+        if len(rel) >= 2 and rel[0] not in expected and rel[1] in expected:
+            split = rel[0]
+            if all((images_root / split / branch).exists() for branch in expected):
+                return lambda f: [images_root / split / branch / Path(f).name for branch in expected]
+
+        # Layout B: images/detail1/train/*.jpg, siblings are images/{primary,detail1,detail2}/train
+        if len(rel) >= 2 and rel[0] in expected:
+            split = rel[1] if len(rel) >= 3 else ""
+            if split and all((images_root / branch / split).exists() for branch in expected):
+                return lambda f: [images_root / branch / split / Path(f).name for branch in expected]
+            if all((images_root / branch).exists() for branch in expected):
+                return lambda f: [images_root / branch / Path(f).name for branch in expected]
+
+        # Layout C: data yaml points at images/train and branches live under it.
+        if len(rel) >= 1 and all((path / branch).exists() for branch in expected):
+            return lambda f: [path / branch / Path(f).name for branch in expected]
+
+        return None
     
     def load_image(self, i, rect_mode=True):
         """Load and combine triple input images."""
@@ -57,13 +81,12 @@ class TripleInputDataset(YOLODataset):
         
         # Get the image path from the dataset
         f = self.im_files[i]
-        base_name = Path(f).name
-        base_dir = Path(f).parent.parent.parent  # Go up to dataset root
-        
-        # Define the three image paths
-        primary_path = base_dir / "primary" / Path(f).parent.name / base_name
-        detail1_path = base_dir / "detail1" / Path(f).parent.name / base_name  
-        detail2_path = base_dir / "detail2" / Path(f).parent.name / base_name
+        resolver = self._find_triple_layout(Path(f)) or self._find_triple_layout(Path(self.img_path))
+        if resolver is None:
+            LOGGER.warning(f"Could not resolve triple input siblings for: {f}")
+            return super().load_image(i, rect_mode)
+
+        primary_path, detail1_path, detail2_path = resolver(f)
         
         # Load the three images
         images = []
@@ -143,10 +166,7 @@ def build_triple_dataset(cfg, img_path, batch, data, mode="train", rect=False, s
     """Build triple input dataset."""
     
     # Check if this is a triple input dataset structure
-    base_path = Path(img_path).parent.parent if Path(img_path).parent.parent.exists() else Path(img_path).parent
-    
-    expected_folders = ["primary", "detail1", "detail2"]
-    is_triple = all((base_path / folder).exists() for folder in expected_folders)
+    is_triple = TripleInputDataset._find_triple_layout(Path(img_path)) is not None
     
     if is_triple:
         LOGGER.info(f"Building TripleInputDataset for {mode}")
