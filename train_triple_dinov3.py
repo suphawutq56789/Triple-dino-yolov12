@@ -532,6 +532,15 @@ def train_triple_dinov3(
     _original_torch_save = torch.save
 
     def _safe_torch_save(obj, *args, **kwargs):
+        if args and isinstance(args[0], (str, os.PathLike)):
+            target = Path(args[0])
+            tmp_target = target.with_name(f"{target.name}.tmp")
+            save_args = (tmp_target, *args[1:])
+        else:
+            target = None
+            tmp_target = None
+            save_args = args
+
         def _strip_hooks(o, seen=None):
             if seen is None:
                 seen = set()
@@ -557,13 +566,25 @@ def train_triple_dinov3(
             elif isinstance(o, dict):
                 for v in o.values():
                     _strip_hooks(v, seen)
+
         try:
-            return _original_torch_save(obj, *args, **kwargs)
+            result = _original_torch_save(obj, *save_args, **kwargs)
+            if target is not None:
+                os.replace(tmp_target, target)
+            return result
         except (AttributeError, TypeError) as e:
             if "pickle" in str(e).lower() or "Can't pickle" in str(e):
+                if tmp_target is not None:
+                    tmp_target.unlink(missing_ok=True)
                 _strip_hooks(obj)
-                return _original_torch_save(obj, *args, **kwargs)
+                result = _original_torch_save(obj, *save_args, **kwargs)
+                if target is not None:
+                    os.replace(tmp_target, target)
+                return result
             raise
+        finally:
+            if tmp_target is not None and tmp_target.exists():
+                tmp_target.unlink(missing_ok=True)
 
     torch.save = _safe_torch_save
 
