@@ -452,8 +452,8 @@ def train_triple_dinov3(
         # Optimizer (AdamW often works better with transformers)
         'optimizer': 'AdamW',
         
-        # Mixed precision - auto enable for batch>=8 (safe from BatchNorm issues, ~1.5-2x faster)
-        'amp': effective_batch_size >= 8,
+        # Mixed precision disabled - inference_mode tensor conflict with frozen DINOv3
+        'amp': False,
         
         # Channel-based augmentations: disabled (incompatible with 9-channel triple input)
         'hsv_h': 0.0,  # Incompatible with 9-channel input
