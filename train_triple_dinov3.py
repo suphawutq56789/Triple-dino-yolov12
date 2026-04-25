@@ -40,7 +40,7 @@ def train_triple_dinov3(
     pretrained_path: str = None,
     epochs: int = 200,
     batch_size: int = 8,  # Smaller default due to DINOv3 memory usage
-    imgsz: int = 224,     # DINOv3 default size
+    imgsz: int = 640,     # Must be 640x640 for correct P3/P4/P5 spatial dimensions
     patience: int = 30,
     name: str = "yolov12_triple_dinov3",
     device: str = "0",

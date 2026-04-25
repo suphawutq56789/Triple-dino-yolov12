@@ -173,7 +173,7 @@ python train_triple_dinov3.py --data data.yaml --integrate nodino --variant m --
 | `--pretrained` | path to `.pt` | None | YOLOv12 pretrained weights |
 | `--unfreeze-dinov3` | flag | False | Fine-tune DINOv3 (needs lower batch) |
 | `--batch` | int | `8` | Batch size |
-| `--imgsz` | int | `224` | Image size (640 recommended) |
+| `--imgsz` | int | `640` | **Must be 640×640** — required for correct P3/P4/P5 spatial dimensions |
 | `--epochs` | int | `200` | Training epochs |
 | `--patience` | int | `30` | Early stopping patience |
 
