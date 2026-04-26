@@ -133,16 +133,14 @@ class BaseDataset(Dataset):
     @staticmethod
     def _filter_triple_input_primary_files(im_files):
         """Keep only primary branch files when a recursive scan finds a triple-input layout."""
-        branches = {"primary", "detail1", "detail2"}
+        detail_branches = {"detail1", "detail2"}
         paths = [Path(f) for f in im_files]
-        branch_parts = [set(p.parts) & branches for p in paths]
+        branch_parts = [set(p.parts) for p in paths]
 
-        if not any("primary" in parts for parts in branch_parts):
-            return im_files
-        if not any(parts & {"detail1", "detail2"} for parts in branch_parts):
+        if not any(parts & detail_branches for parts in branch_parts):
             return im_files
 
-        filtered = [str(p) for p, parts in zip(paths, branch_parts) if "primary" in parts]
+        filtered = [str(p) for p, parts in zip(paths, branch_parts) if not (parts & detail_branches)]
         return sorted(filtered) if filtered else im_files
 
     def update_labels(self, include_class: Optional[list]):
