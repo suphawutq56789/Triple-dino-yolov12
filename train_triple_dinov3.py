@@ -50,7 +50,7 @@ def train_triple_dinov3(
     workers: int = 16,
     lr0: float = None,
     lrf: float = 0.01,
-    weight_decay: float = 0.0015,
+    weight_decay: float = 0.001,
     warmup_epochs: float = 5,
     close_mosaic: int = 45,
     iou: float = 0.45,
@@ -904,8 +904,8 @@ def main():
                        help='Initial learning rate. Default: 0.001 for nodino, 0.00015 for frozen DINOv3, 0.00005 for unfrozen DINOv3')
     parser.add_argument('--lrf', type=float, default=0.01,
                        help='Final LR ratio (lr0 * lrf = final LR, default 0.01)')
-    parser.add_argument('--weight-decay', type=float, default=0.0015,
-                       help='Weight decay for regularization (default 0.0015)')
+    parser.add_argument('--weight-decay', type=float, default=0.001,
+                       help='Weight decay for regularization (default 0.001)')
     parser.add_argument('--warmup-epochs', type=float, default=5,
                        help='Warmup epochs for optimizer schedule (default 5)')
     parser.add_argument('--close-mosaic', type=int, default=45,
