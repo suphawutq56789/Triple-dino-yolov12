@@ -218,9 +218,27 @@ def train_triple_dinov3(
             # For initial integration, DINOv3 outputs 64-ch so backbone input = 64
             if integrate == "initial":
                 _config['ch'] = 64
-            _temp_cfg = f"temp_yolov12_triple_dinov3_{variant}_{dinov3_size}.yaml"
+            elif integrate == "p3":
+                _config['backbone'][5][-1][2] = dino_model_name
+                _config['backbone'][5][-1][3] = freeze_dinov3
+            elif integrate == "p4":
+                _config['backbone'][7][-1][2] = dino_model_name
+                _config['backbone'][7][-1][3] = freeze_dinov3
+            elif integrate == "dual":
+                _config['backbone'][5][-1][2] = dino_model_name
+                _config['backbone'][5][-1][3] = freeze_dinov3
+                _config['backbone'][8][-1][2] = dino_model_name
+                _config['backbone'][8][-1][3] = freeze_dinov3
+            elif integrate == "p0p3":
+                _config['backbone'][0][-1][0] = dino_model_name
+                _config['backbone'][0][-1][4] = freeze_dinov3
+                _config['backbone'][5][-1][0] = dino_model_name
+                _config['backbone'][5][-1][4] = freeze_dinov3
+
+            _config['scale'] = variant
+            _temp_cfg = f"yolov12{variant}_triple_dinov3_{dinov3_size}_pretrained.yaml"
             with open(_temp_cfg, 'w') as _f:
-                _yaml.dump(_config, _f, default_flow_style=False)
+                _yaml.dump(_config, _f, default_flow_style=False, sort_keys=False)
 
             model = load_pretrained_weights_to_triple_model(
                 pretrained_path=pretrained_path,

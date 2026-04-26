@@ -52,7 +52,7 @@ def load_pretrained_weights_to_triple_model(pretrained_path, triple_model_config
     else:
         # Set scale key so parse_model uses scales[variant] correctly (preserves C3k2/A2C2f flags)
         cfg['scale'] = variant
-        tmp_yaml = f"temp_yolov12_triple_{variant}.yaml"
+        tmp_yaml = f"yolov12{variant}_triple_pretrained.yaml"
         with open(tmp_yaml, 'w') as f:
             yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)
         triple_model_config = tmp_yaml
