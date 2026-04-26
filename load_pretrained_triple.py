@@ -94,6 +94,15 @@ def load_pretrained_weights_to_triple_model(pretrained_path, triple_model_config
                 return f'model.{n - offset}.{m.group(2)}'
         return None
 
+    def _offset_name_from(name, offset, start):
+        """Remap model.N.xxx to model.(N-offset).xxx when N >= start."""
+        m = re.match(r'model\.(\d+)\.(.*)', name)
+        if m:
+            n = int(m.group(1))
+            if n >= start:
+                return f'model.{n - offset}.{m.group(2)}'
+        return None
+
     for name, param in triple_state_dict.items():
         loaded = False
         # Direct match
@@ -118,6 +127,16 @@ def load_pretrained_weights_to_triple_model(pretrained_path, triple_model_config
             # p3 offset mapping: p3 layer N (N>=6) = pretrained layer N-1
             if not loaded and integrate == 'p3':
                 offset_name = _offset_name(name, 1)
+                if offset_name and offset_name in pretrained_state_dict:
+                    pretrained_param = pretrained_state_dict[offset_name]
+                    if param.shape == pretrained_param.shape:
+                        param.copy_(pretrained_param)
+                        loaded_layers.append(f"{name} <- {offset_name}")
+                        loaded = True
+
+            # p5 inserts one DINO layer before Detect, so only Detect shifts from 21 to 22.
+            if not loaded and integrate == 'p5':
+                offset_name = _offset_name_from(name, 1, 22)
                 if offset_name and offset_name in pretrained_state_dict:
                     pretrained_param = pretrained_state_dict[offset_name]
                     if param.shape == pretrained_param.shape:

@@ -616,6 +616,64 @@ class DINOv3FeatureEnhancer(nn.Module):
         return self
 
 
+class DINOv3P5LiteFusion(nn.Module):
+    """
+    Lightweight late DINOv3 fusion for the final P5 feature map.
+
+    This keeps the YOLO path dominant by returning a residual update:
+        output = x + sigmoid(gate) * project(DINO(x))
+
+    The projection batch-norm is initialized to zero so the module starts as
+    an identity layer and only uses DINO if training finds it useful.
+    """
+
+    def __init__(
+        self,
+        input_channels: int = 512,
+        output_channels: int = 512,
+        model_name: str = "facebook/dinov3-vitb16-pretrain-lvd1689m",
+        freeze: bool = True,
+        dino_channels: int = 64,
+        gate_init: float = -4.0,
+    ):
+        super().__init__()
+        self.input_channels = input_channels
+        self.output_channels = output_channels
+        self.backbone = DINOv3Backbone(
+            model_name=model_name,
+            input_channels=input_channels,
+            output_channels=dino_channels,
+            freeze=freeze,
+            image_size=224,
+        )
+        self.project = nn.Sequential(
+            nn.Conv2d(dino_channels, output_channels, kernel_size=1, bias=False),
+            nn.BatchNorm2d(output_channels),
+        )
+        nn.init.zeros_(self.project[1].weight)
+        nn.init.zeros_(self.project[1].bias)
+        self.gate = nn.Parameter(torch.tensor(float(gate_init)))
+        self.residual_proj = (
+            nn.Identity()
+            if input_channels == output_channels
+            else nn.Conv2d(input_channels, output_channels, kernel_size=1, bias=False)
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        identity = self.residual_proj(x)
+        h, w = identity.shape[-2:]
+        y = self.backbone(x)
+        if y.shape[-2:] != (h, w):
+            y = nn.functional.interpolate(y, size=(h, w), mode="bilinear", align_corners=False)
+        y = self.project(y)
+        return identity + torch.sigmoid(self.gate) * y
+
+    def train(self, mode: bool = True):
+        super().train(mode)
+        self.backbone.train(mode)
+        return self
+
+
 class DINOv3TripleBackbone(DINOv3Backbone):
     """
     DINOv3 backbone specifically designed for triple input processing.

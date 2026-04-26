@@ -65,6 +65,7 @@ from ultralytics.nn.modules import (
     TripleInputConv,
     DINOv3Backbone,
     DINOv3FeatureEnhancer,
+    DINOv3P5LiteFusion,
     DINOv3TripleBackbone,
     DINOv3BackboneWithAdapter,
     P3FeatureEnhancer,
@@ -1086,6 +1087,11 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             c1 = ch[f]
             c2 = c1  # output same channels as input
             args = [c1, c2, *args[2:]]  # [input_channels, output_channels, model_name, freeze]
+        elif m is DINOv3P5LiteFusion:
+            # Late residual DINO fusion keeps the same channel count as the P5 feature.
+            c1 = ch[f]
+            c2 = c1
+            args = [c1, c2, *args[2:]]  # [input_channels, output_channels, model_name, freeze, dino_ch, gate_init]
         elif m in {DINOv3Backbone, DINOv3TripleBackbone, DINOv3BackboneWithAdapter, P3FeatureEnhancer}:
             # Special handling for DINOv3 backbones and P3FeatureEnhancer
             if m is P3FeatureEnhancer:

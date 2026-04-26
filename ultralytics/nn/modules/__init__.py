@@ -79,6 +79,7 @@ from .conv import (
 from .dinov3 import (
     DINOv3Backbone,
     DINOv3FeatureEnhancer,
+    DINOv3P5LiteFusion,
     DINOv3TripleBackbone,
     DINOv3BackboneWithAdapter,
     P3FeatureEnhancer,
@@ -173,6 +174,8 @@ __all__ = (
     "A2C2f",
     "TripleInputConv",
     "DINOv3Backbone",
+    "DINOv3FeatureEnhancer",
+    "DINOv3P5LiteFusion",
     "DINOv3TripleBackbone",
     "DINOv3BackboneWithAdapter",
     "P3FeatureEnhancer",
