@@ -38,6 +38,6 @@ head:
   - [-1, 1, Conv, [512, 3, 2]]                   # 18
   - [[-1, 8], 1, Concat, [1]]                    # 19 cat backbone P5
   - [-1, 2, C3k2, [1024, True]]                  # 20 P5/32-large
-  - [-1, 1, DINOv3P5LiteFusion, [1024, 1024, "facebook/dinov3-vitb16-pretrain-lvd1689m", True, 32, -6.0]] # 21 gated DINO-lite@P5
+  - [-1, 1, DINOv3P5LiteFusion, [1024, 1024, "facebook/dinov3-vitb16-pretrain-lvd1689m", True, 48, -5.0]] # 21 gated DINO-lite@P5
 
   - [[14, 17, 21], 1, Detect, [nc]]              # 22 Detect(P3, P4, P5)
