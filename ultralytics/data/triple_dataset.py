@@ -72,7 +72,7 @@ class TripleInputDataset(YOLODataset):
             return lambda f: [path / branch / Path(f).name for branch in expected]
 
         return None
-    
+
     def load_image(self, i, rect_mode=True):
         """Load and combine triple input images."""
         if not self.is_triple_input:
