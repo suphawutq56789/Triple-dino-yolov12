@@ -121,6 +121,7 @@ class BaseDataset(Dataset):
                 else:
                     raise FileNotFoundError(f"{self.prefix}{p} does not exist")
             im_files = sorted(x.replace("/", os.sep) for x in f if x.split(".")[-1].lower() in IMG_FORMATS)
+            im_files = self._filter_triple_input_primary_files(im_files)
             # self.img_files = sorted([x for x in f if x.suffix[1:].lower() in IMG_FORMATS])  # pathlib
             assert im_files, f"{self.prefix}No images found in {img_path}. {FORMATS_HELP_MSG}"
         except Exception as e:
@@ -128,6 +129,21 @@ class BaseDataset(Dataset):
         if self.fraction < 1:
             im_files = im_files[: round(len(im_files) * self.fraction)]  # retain a fraction of the dataset
         return im_files
+
+    @staticmethod
+    def _filter_triple_input_primary_files(im_files):
+        """Keep only primary branch files when a recursive scan finds a triple-input layout."""
+        branches = {"primary", "detail1", "detail2"}
+        paths = [Path(f) for f in im_files]
+        branch_parts = [set(p.parts) & branches for p in paths]
+
+        if not any("primary" in parts for parts in branch_parts):
+            return im_files
+        if not any(parts & {"detail1", "detail2"} for parts in branch_parts):
+            return im_files
+
+        filtered = [str(p) for p, parts in zip(paths, branch_parts) if "primary" in parts]
+        return sorted(filtered) if filtered else im_files
 
     def update_labels(self, include_class: Optional[list]):
         """Update labels to include only these classes (optional)."""
