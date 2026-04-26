@@ -56,7 +56,7 @@ def train_triple_dinov3(
     iou: float = 0.45,
     cos_lr: bool = True,
     amp: bool = False,
-    mosaic: float = 0.5,
+    mosaic: float = 0.6,
     degrees: float = 6.0,
     translate: float = 0.10,
     scale: float = 0.35,
@@ -916,8 +916,8 @@ def main():
                        help='Use cosine LR scheduler instead of linear')
     parser.add_argument('--amp', action='store_true',
                        help='Enable mixed precision training. Recommended for nodino; keep off if frozen DINOv3 gives tensor-mode errors')
-    parser.add_argument('--mosaic', type=float, default=0.5,
-                       help='Mosaic augmentation probability (default 0.5)')
+    parser.add_argument('--mosaic', type=float, default=0.6,
+                       help='Mosaic augmentation probability (default 0.6)')
     parser.add_argument('--degrees', type=float, default=6.0,
                        help='Rotation augmentation degrees (default 6.0)')
     parser.add_argument('--translate', type=float, default=0.10,
