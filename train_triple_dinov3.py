@@ -41,7 +41,7 @@ def train_triple_dinov3(
     epochs: int = 150,
     batch_size: int = 16,
     imgsz: int = 640,     # Must be 640x640 for correct P3/P4/P5 spatial dimensions
-    patience: int = 90,
+    patience: int = 60,
     name: str = "p4_s_anti_overfit",
     device: str = "0",
     integrate: str = "p4",  # New parameter: "initial", "nodino", "p3"
@@ -53,15 +53,15 @@ def train_triple_dinov3(
     weight_decay: float = 0.001,
     warmup_epochs: float = 5,
     close_mosaic: int = 45,
-    iou: float = 0.4,
+    iou: float = 0.45,
     cos_lr: bool = True,
     amp: bool = False,
-    mosaic: float = 0.8,
-    degrees: float = 10.0,
-    translate: float = 0.12,
-    scale: float = 0.5,
+    mosaic: float = 0.6,
+    degrees: float = 6.0,
+    translate: float = 0.10,
+    scale: float = 0.35,
     shear: float = 0.0,
-    flipud: float = 0.3,
+    flipud: float = 0.1,
     fliplr: float = 0.5,
     max_background_ratio: float = -1,
     **kwargs
@@ -884,8 +884,8 @@ def main():
                        help='Batch size (default: 16)')
     parser.add_argument('--imgsz', type=int, default=640,
                        help='Image size (default: 640)')
-    parser.add_argument('--patience', type=int, default=40,
-                       help='Early stopping patience (default: 40)')
+    parser.add_argument('--patience', type=int, default=60,
+                       help='Early stopping patience (default: 60)')
     parser.add_argument('--name', type=str, default='p4_s_anti_overfit',
                        help='Experiment name (default: p4_s_anti_overfit)')
     parser.add_argument('--device', type=str, default='0',
@@ -910,24 +910,24 @@ def main():
                        help='Warmup epochs for optimizer schedule (default 5)')
     parser.add_argument('--close-mosaic', type=int, default=45,
                        help='Disable mosaic for last N epochs (default 45)')
-    parser.add_argument('--iou', type=float, default=0.4,
-                       help='IoU threshold for NMS (default 0.4, lower = better for thin objects)')
+    parser.add_argument('--iou', type=float, default=0.45,
+                       help='IoU threshold for NMS (default 0.45, lower = better for thin objects)')
     parser.add_argument('--cos-lr', action='store_true', default=True,
                        help='Use cosine LR scheduler instead of linear')
     parser.add_argument('--amp', action='store_true',
                        help='Enable mixed precision training. Recommended for nodino; keep off if frozen DINOv3 gives tensor-mode errors')
-    parser.add_argument('--mosaic', type=float, default=0.8,
-                       help='Mosaic augmentation probability (default 0.8)')
-    parser.add_argument('--degrees', type=float, default=10.0,
-                       help='Rotation augmentation degrees (default 10.0)')
-    parser.add_argument('--translate', type=float, default=0.12,
-                       help='Translation augmentation fraction (default 0.12)')
-    parser.add_argument('--scale', type=float, default=0.5,
-                       help='Scale augmentation gain (default 0.5)')
+    parser.add_argument('--mosaic', type=float, default=0.6,
+                       help='Mosaic augmentation probability (default 0.6)')
+    parser.add_argument('--degrees', type=float, default=6.0,
+                       help='Rotation augmentation degrees (default 6.0)')
+    parser.add_argument('--translate', type=float, default=0.10,
+                       help='Translation augmentation fraction (default 0.10)')
+    parser.add_argument('--scale', type=float, default=0.35,
+                       help='Scale augmentation gain (default 0.35)')
     parser.add_argument('--shear', type=float, default=0.0,
                        help='Shear augmentation degrees (default 0.0)')
-    parser.add_argument('--flipud', type=float, default=0.3,
-                       help='Vertical flip probability (default 0.3)')
+    parser.add_argument('--flipud', type=float, default=0.1,
+                       help='Vertical flip probability (default 0.1)')
     parser.add_argument('--fliplr', type=float, default=0.5,
                        help='Horizontal flip probability (default 0.5)')
     parser.add_argument('--max-background-ratio', type=float, default=-1,
