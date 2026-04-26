@@ -53,13 +53,13 @@ def train_triple_dinov3(
     weight_decay: float = 0.001,
     warmup_epochs: float = 5,
     close_mosaic: int = 45,
-    iou: float = 0.5,
+    iou: float = 0.4,
     cos_lr: bool = True,
     amp: bool = False,
     mosaic: float = 0.8,
     degrees: float = 10.0,
     translate: float = 0.12,
-    scale: float = 0.35,
+    scale: float = 0.5,
     shear: float = 0.0,
     flipud: float = 0.3,
     fliplr: float = 0.5,
@@ -910,8 +910,8 @@ def main():
                        help='Warmup epochs for optimizer schedule (default 5)')
     parser.add_argument('--close-mosaic', type=int, default=45,
                        help='Disable mosaic for last N epochs (default 45)')
-    parser.add_argument('--iou', type=float, default=0.5,
-                       help='IoU threshold for NMS (default 0.5, lower = better for thin objects)')
+    parser.add_argument('--iou', type=float, default=0.4,
+                       help='IoU threshold for NMS (default 0.4, lower = better for thin objects)')
     parser.add_argument('--cos-lr', action='store_true', default=True,
                        help='Use cosine LR scheduler instead of linear')
     parser.add_argument('--amp', action='store_true',
@@ -922,8 +922,8 @@ def main():
                        help='Rotation augmentation degrees (default 10.0)')
     parser.add_argument('--translate', type=float, default=0.12,
                        help='Translation augmentation fraction (default 0.12)')
-    parser.add_argument('--scale', type=float, default=0.35,
-                       help='Scale augmentation gain (default 0.35)')
+    parser.add_argument('--scale', type=float, default=0.5,
+                       help='Scale augmentation gain (default 0.5)')
     parser.add_argument('--shear', type=float, default=0.0,
                        help='Shear augmentation degrees (default 0.0)')
     parser.add_argument('--flipud', type=float, default=0.3,
