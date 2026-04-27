@@ -44,6 +44,7 @@ def train_triple_dinov3(
     patience: int = 60,
     name: str = "p4_s_anti_overfit",
     device: str = "0",
+    seed: int = 0,
     integrate: str = "p4",  # New parameter: "initial", "nodino", "p3"
     variant: str = "s",  # YOLOv12 model variant: n, s, m, l, x
     save_period: int = 10,  # Save weights every N epochs (-1 = only best/last)
@@ -499,6 +500,7 @@ def train_triple_dinov3(
         'plots': True,
         'cache': False,  # Disable caching for triple input
         'device': device,
+        'seed': seed,
         
         # Learning rate configuration for DINOv3
         'lr0': lr0,
@@ -548,6 +550,7 @@ def train_triple_dinov3(
     if effective_batch_size != batch_size:
         print(f"  Batch size adjusted: {batch_size} → {effective_batch_size} (minimum for BatchNorm)")
     print(f"  Learning rate: {train_args['lr0']}")
+    print(f"  Seed: {train_args['seed']}")
     print(f"  Optimizer: {train_args['optimizer']}")
     print(f"  Mixed precision: {train_args['amp']}")
     print(f"  Warmup epochs: {train_args['warmup_epochs']}")
@@ -919,6 +922,8 @@ def main():
                        help='Experiment name (default: p4_s_anti_overfit)')
     parser.add_argument('--device', type=str, default='0',
                        help='Device to use (default: 0, use "cpu" for CPU)')
+    parser.add_argument('--seed', type=int, default=0,
+                       help='Random seed for reproducibility (default: 0)')
     parser.add_argument('--variant', type=str, choices=['n', 's', 'm', 'l', 'x'], default='s',
                        help='YOLOv12 model variant (default: s)')
     parser.add_argument('--save-period', type=int, default=10,
@@ -1012,6 +1017,7 @@ def main():
             patience=args.patience,
             name=args.name,
             device=args.device,
+            seed=args.seed,
             integrate=args.integrate,
             variant=args.variant,
             save_period=args.save_period,
