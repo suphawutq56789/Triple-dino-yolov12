@@ -478,7 +478,7 @@ def train_triple_dinov3(
     # Force minimum batch size of 2 to avoid BatchNorm issues with batch=1
     effective_batch_size = max(batch_size, 2)
     if lr0 is None:
-        lr0 = 0.001 if integrate == "nodino" else (0.00015 if freeze_dinov3 else 0.00005)
+        lr0 = 0.00015 if integrate == "nodino" else (0.00015 if freeze_dinov3 else 0.00005)
     os.environ["YOLO_MAP50_FITNESS"] = "1"
     if max_background_ratio is not None and max_background_ratio >= 0:
         os.environ["YOLO_MAX_BACKGROUND_RATIO"] = str(max_background_ratio)
@@ -930,7 +930,7 @@ def main():
     parser.add_argument('--workers', type=int, default=16,
                        help='Number of DataLoader workers (default 16)')
     parser.add_argument('--lr0', type=float, default=None,
-                       help='Initial learning rate. Default: 0.001 for nodino, 0.00015 for frozen DINOv3, 0.00005 for unfrozen DINOv3')
+                       help='Initial learning rate. Default: 0.00015 for nodino/frozen DINOv3, 0.00005 for unfrozen DINOv3')
     parser.add_argument('--lrf', type=float, default=0.01,
                        help='Final LR ratio (lr0 * lrf = final LR, default 0.01)')
     parser.add_argument('--weight-decay', type=float, default=0.001,
